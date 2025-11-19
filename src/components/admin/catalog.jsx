@@ -4,6 +4,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import {
   Box,
   Button,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
@@ -11,7 +12,10 @@ import {
   FormControl,
   Grid,
   IconButton,
+  InputLabel,
+  ListItemText,
   MenuItem,
+  OutlinedInput,
   Paper,
   Select,
   Stack,
@@ -24,9 +28,11 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
+import { bikeList } from "../../data/bikesList";
 import { LS_KEYS } from "../../enum";
 import { DEFAULT_SERVICES } from "../../local";
 import { loadLS, saveLS } from "../../utils";
+import { itemTypeList } from "../../data/itemTypeList";
 
 const canManageServices = (role) => role === "superadmin" || role === "admin";
 
@@ -41,6 +47,9 @@ export function Catalog({ role }) {
     id: "",
     name: "",
     price: 0,
+    quantity: 0,
+    bike: [],
+    type: "",
     details: "",
   });
 
@@ -49,8 +58,11 @@ export function Catalog({ role }) {
   const filtered = useMemo(() => {
     return services.filter((s) => {
       const byQ = q
-        ? s.name.toLowerCase().includes(q.toLowerCase()) ||
-          s.details.toLowerCase().includes(q.toLowerCase())
+        ? s.name?.toLowerCase().includes(q.toLowerCase()) ||
+          s.details?.toLowerCase().includes(q.toLowerCase()) ||
+          (Array.isArray(s.bike)
+            ? s.bike.join(", ").toLowerCase().includes(q.toLowerCase())
+            : s.bike?.toLowerCase().includes(q.toLowerCase()))
         : true;
       return byQ;
     });
@@ -61,6 +73,9 @@ export function Catalog({ role }) {
       id: "",
       name: "",
       price: 0,
+      quantity: 0,
+      bike: [],
+      type: "",
       details: "",
     });
     setEditing(false);
@@ -99,7 +114,15 @@ export function Catalog({ role }) {
   };
 
   const handleEdit = (s) => {
-    setForm(s);
+    setForm({
+      id: s.id || "",
+      name: s.name || "",
+      price: s.price ?? 0,
+      quantity: s.quantity ?? 0,
+      bike: Array.isArray(s.bike) ? s.bike : s.bike ? [s.bike] : [],
+      type: s.type || "",
+      details: s.details || "",
+    });
     setEditing(true);
     setOpen(true);
   };
@@ -124,10 +147,10 @@ export function Catalog({ role }) {
       </Box>
 
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid xs={12} md={6}>
+        <Grid>
           <TextField
             fullWidth
-            label="Search services or details"
+            label="Search by services | bike | details"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -139,6 +162,9 @@ export function Catalog({ role }) {
           <TableRow>
             <TableCell>Service</TableCell>
             <TableCell>Price</TableCell>
+            <TableCell>Quantity</TableCell>
+            <TableCell>Bike</TableCell>
+            <TableCell>Type</TableCell>
             <TableCell>Details</TableCell>
             {canManageServices(role) && (
               <TableCell align="right">Actions</TableCell>
@@ -150,16 +176,29 @@ export function Catalog({ role }) {
             <TableRow key={s.id} hover>
               <TableCell>{s.name}</TableCell>
               <TableCell>RM{s.price.toFixed(2)}</TableCell>
+              <TableCell>{s.quantity > 0 ? s.quantity : "-"}</TableCell>
               <TableCell
-                title={s.details}
+                title={s.bike}
                 style={{
-                  maxWidth: 320,
+                  maxWidth: 140,
                   whiteSpace: "nowrap",
                   textOverflow: "ellipsis",
                   overflow: "hidden",
                 }}
               >
-                {s.details}
+                {Array.isArray(s.bike) ? s.bike.join(", ") : s.bike}
+              </TableCell>
+              <TableCell>{s.type}</TableCell>
+              <TableCell
+                title={s.details}
+                style={{
+                  maxWidth: 80,
+                  whiteSpace: "nowrap",
+                  textOverflow: "ellipsis",
+                  overflow: "hidden",
+                }}
+              >
+                {s.details ? s.details : "-"}
               </TableCell>
               {canManageServices(role) && (
                 <TableCell align="right">
@@ -213,12 +252,56 @@ export function Catalog({ role }) {
                   setForm({ ...form, price: Number(e.target.value) })
                 }
               />
+              <TextField
+                label="Quantity"
+                type="number"
+                fullWidth
+                value={form.quantity}
+                onChange={(e) =>
+                  setForm({ ...form, quantity: Number(e.target.value) })
+                }
+              />
+            </Stack>
+            <Stack flexDirection={"row"} columnGap={2}>
+              <FormControl fullWidth>
+                <InputLabel>Bike</InputLabel>
+                <Select
+                  multiple
+                  value={form.bike ?? []}
+                  onChange={(e) => setForm({ ...form, bike: e.target.value })}
+                  input={<OutlinedInput label="Bike" />}
+                  renderValue={(selected) =>
+                    selected.length === 0 ? "Select bikes" : selected.join(", ")
+                  }
+                >
+                  {bikeList.map((b) => (
+                    <MenuItem key={b} value={b}>
+                      <Checkbox checked={form.bike.includes(b)} />
+                      <ListItemText primary={b} />
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <TextField
+                select
+                label="Type"
+                fullWidth
+                value={form?.type || ""}
+                onChange={(e) => setForm({ ...form, type: e.target.value })}
+              >
+                {itemTypeList.map((b) => (
+                  <MenuItem key={b} value={b}>
+                    {b}
+                  </MenuItem>
+                ))}
+              </TextField>
             </Stack>
             <Stack>
               <TextField
                 label="Details"
                 fullWidth
-                value={form.details}
+                value={form.details ?? ""}
                 onChange={(e) => setForm({ ...form, details: e.target.value })}
               />
             </Stack>

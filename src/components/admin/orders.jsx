@@ -1,14 +1,16 @@
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import VisibilityIcon from "@mui/icons-material/Visibility";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import QueuePlayNextIcon from "@mui/icons-material/QueuePlayNext";
 import {
   Box,
   Button,
   Chip,
   Divider,
   Grid,
+  IconButton,
   MenuItem,
   Paper,
-  Select,
   Stack,
   Table,
   TableBody,
@@ -16,12 +18,14 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print";
+import { bikeList } from "../../data/bikesList";
 import { LS_KEYS } from "../../enum";
 import { DEFAULT_SERVICES } from "../../local";
 import { loadLS, saveLS } from "../../utils";
@@ -31,45 +35,15 @@ export function Orders({ role }) {
   const [services] = useState(loadLS(LS_KEYS.SERVICES, DEFAULT_SERVICES));
   const [orders, setOrders] = useState(loadLS(LS_KEYS.ORDERS, []));
   const [customer, setCustomer] = useState("");
-  const [bike, setBike] = useState(""); // 🔹 new state
-  const [mechanic, setMechanic] = useState(""); // 🔹 new state
+  const [phoneNo, setPhoneNo] = useState("");
+  const [platNo, setPlatNo] = useState("");
+  const [mileage, setMileage] = useState("");
+  const [bike, setBike] = useState("");
+  const [mechanic, setMechanic] = useState("");
   const [selected, setSelected] = useState([]);
   const [printOrder, setPrintOrder] = useState(null);
-  const [search, setSearch] = useState(""); // 🔹 search services
+  const [search, setSearch] = useState("");
   const printRef = useRef(null);
-
-  const bikeOptions = [
-    "Yamaha R15 V1",
-    "Yamaha R25 V1",
-    "Yamaha R25 V2",
-    "Yamaha R25 V3",
-    "Yamaha R1 V1",
-    "Yamaha R1 V2",
-    "Yamaha MT-15",
-    "Yamaha MT-25",
-    "Yamaha MT-07 V1",
-    "Yamaha MT-07 V2",
-    "Yamaha MT-09 V1",
-    "Yamaha MT-09 V2",
-    "Yamaha MT-09 V3",
-    "Yamaha MT-09 V4",
-    "Honda EX5",
-    "Honda RS150R",
-    "Honda CBR150",
-    "Honda CBR250 RR",
-    "Honda CBR500 RR",
-    "Honda CBR600",
-    "Honda CBR650 R",
-    "Honda CB250 R",
-    "Honda CB250 R",
-    "Honda CB650 R",
-    "Kawasaki Ninja 250",
-    "Kawasaki Z250",
-    "Kawasaki Z800",
-    "Kawasaki Z900",
-    "Suzuki Raider",
-  ];
-
   const mechanicOptions = ["Wan", "Syahmi"];
 
   const canCashier = (role) =>
@@ -95,6 +69,9 @@ export function Orders({ role }) {
       customer,
       bike,
       mechanic,
+      phoneNo,
+      platNo,
+      mileage,
       items,
       total,
       status: "pending",
@@ -105,8 +82,11 @@ export function Orders({ role }) {
     setOrders(next);
     saveLS(LS_KEYS.DISPLAY_ORDER_ID, order.id);
     setCustomer("");
+    setPhoneNo("");
     setBike("");
     setMechanic("");
+    setMileage("");
+    setPlatNo("");
     setSelected([]);
   };
 
@@ -131,11 +111,14 @@ export function Orders({ role }) {
     doc.text("Service Invoice", 14, 20);
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
+    doc.setFontSize(9.5);
     doc.text(`Customer: ${order.customer}`, 14, 30);
-    doc.text(`Bike: ${order.bike}`, 14, 35);
-    doc.text(`Mechanic: ${order.mechanic}`, 14, 40);
-    doc.text(`Date: ${new Date(order.createdAt).toLocaleString()}`, 14, 50);
+    doc.text(`Phone Number: ${order.phoneNo ? order.phoneNo : "-"}`, 14, 35);
+    doc.text(`Plate No: ${order.platNo}`, 14, 40);
+    doc.text(`Bike: ${order.bike}`, 14, 45);
+    doc.text(`Mileage: ${order.mileage}KM`, 14, 50);
+    doc.text(`Mechanic: ${order.mechanic}`, 14, 55);
+    doc.text(`Date: ${new Date(order.createdAt).toLocaleString()}`, 14, 65);
 
     // Logo (top right)
     const logoWidth = 50;
@@ -164,13 +147,18 @@ export function Orders({ role }) {
     const tableStartY = Math.max(addressY + 10, 70);
 
     // Table
-    const rows = order.items.map((i) => [i.name, i.details, `RM${i.price.toFixed(2)}`]);
+    const rows = order.items.map((i) => [
+      i.name,
+      i.quantity,
+      i.type,
+      `RM${i.price.toFixed(2)}`,
+    ]);
 
     autoTable(doc, {
-      head: [["Service & Product", "Details", "Price"]],
+      head: [["Service & Product", "Qty", "Type", "Price"]],
       body: rows,
       startY: tableStartY,
-      styles: { font: "helvetica", fontSize: 10, cellPadding: 6 }, // 🔹 more spacing
+      styles: { font: "helvetica", fontSize: 10, cellPadding: 4 }, // 🔹 more spacing
       headStyles: { fillColor: [240, 240, 240], textColor: 20 },
     });
 
@@ -223,26 +211,58 @@ export function Orders({ role }) {
       </Typography>
     );
 
+  const deleteOrder = (id) => {
+    if (window.confirm("Are you sure you want to delete this order?")) {
+      const updated = orders.filter((o) => o.id !== id);
+      setOrders(updated);
+      saveLS(LS_KEYS.ORDERS, updated);
+    }
+  };
+
   return (
-    <Grid container spacing={2}>
-      <Grid item xs={12} md={12}>
+    <Grid width={"100%"} container spacing={2}>
+      <Grid width={"100%"} item xs={12} md={12}>
         <Paper variant="outlined" sx={{ p: 2, height: "100%" }}>
           <Typography variant="h6" gutterBottom>
             Create Order
           </Typography>
           <Stack spacing={2}>
-            {/* Customer name */}
-            <Stack>
-              <TextField
-                label="Customer Name"
-                fullWidth
-                value={customer}
-                onChange={(e) => setCustomer(e.target.value)}
-              />
-            </Stack>
-
-            {/* Bike dropdown */}
             <Stack flexDirection={"row"} columnGap={2}>
+              {/* Customer name */}
+              <Stack width="100%">
+                <TextField
+                  label="Customer Name"
+                  fullWidth
+                  value={customer}
+                  onChange={(e) => setCustomer(e.target.value)}
+                />
+              </Stack>
+              <Stack width="100%">
+                <TextField
+                  label="Phone Number"
+                  fullWidth
+                  value={phoneNo}
+                  onChange={(e) => setPhoneNo(e.target.value)}
+                />
+              </Stack>
+              <Stack width="100%">
+                <TextField
+                  label="Plate Number"
+                  fullWidth
+                  value={platNo}
+                  onChange={(e) => setPlatNo(e.target.value)}
+                />
+              </Stack>
+              {/* </Stack>
+            <Stack flexDirection={"row"} columnGap={2}> */}
+              <Stack width="100%">
+                <TextField
+                  label="Mileage"
+                  fullWidth
+                  value={mileage}
+                  onChange={(e) => setMileage(e.target.value)}
+                />
+              </Stack>
               <Stack width="100%">
                 <TextField
                   select
@@ -251,7 +271,7 @@ export function Orders({ role }) {
                   value={bike}
                   onChange={(e) => setBike(e.target.value)}
                 >
-                  {bikeOptions.map((b) => (
+                  {bikeList.map((b) => (
                     <MenuItem key={b} value={b}>
                       {b}
                     </MenuItem>
@@ -290,36 +310,50 @@ export function Orders({ role }) {
             sx={{ mb: 2 }}
           />
 
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Pick</TableCell>
-                <TableCell>Service</TableCell>
-                <TableCell>Details</TableCell>
-                <TableCell>Price</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {services
-                .filter((s) =>
-                  s.name.toLowerCase().includes(search.toLowerCase())
-                )
-                .map((s) => (
-                  <TableRow key={s.id} hover>
-                    <TableCell>
-                      <input
-                        type="checkbox"
-                        checked={selected.includes(s.id)}
-                        onChange={() => toggleSel(s.id)}
-                      />
-                    </TableCell>
-                    <TableCell>{s.name}</TableCell>
-                    <TableCell>{s.details}</TableCell>
-                    <TableCell>RM{s.price.toFixed(2)}</TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
+          <Box sx={{ maxHeight: 250, overflowY: "auto" }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Pick</TableCell>
+                  <TableCell>Service</TableCell>
+                  <TableCell>Quantity</TableCell>
+                  <TableCell>Type</TableCell>
+                  <TableCell>Details</TableCell>
+                  <TableCell>Price</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {services
+                  .filter((s) =>
+                    s.name.toLowerCase().includes(search.toLowerCase())
+                  )
+                  .sort((a, b) => {
+                    // Checked items first
+                    const aChecked = selected.includes(a.id);
+                    const bChecked = selected.includes(b.id);
+                    if (aChecked === bChecked) return 0;
+                    return aChecked ? -1 : 1;
+                  })
+                  .map((s) => (
+                    <TableRow key={s.id} hover>
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selected.includes(s.id)}
+                          onChange={() => toggleSel(s.id)}
+                        />
+                      </TableCell>
+                      <TableCell>{s.name}</TableCell>
+                      <TableCell>{s.quantity > 0 ? s.quantity : "-"}</TableCell>
+                      <TableCell>{s.type}</TableCell>
+                      <TableCell>{s.details ?? "-"}</TableCell>
+                      <TableCell>RM{s.price.toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          </Box>
+
           <Box
             display="flex"
             alignItems="center"
@@ -354,7 +388,7 @@ export function Orders({ role }) {
                 <TableCell>Bike</TableCell>
                 <TableCell>Mechanic</TableCell>
                 <TableCell>Total</TableCell>
-                <TableCell>Status</TableCell>
+                {/* <TableCell>Status</TableCell> */}
                 <TableCell>Paid</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
@@ -366,9 +400,9 @@ export function Orders({ role }) {
                   <TableCell>{o.bike}</TableCell>
                   <TableCell>{o.mechanic}</TableCell>
                   <TableCell>RM{o.total.toFixed(2)}</TableCell>
-                  <TableCell>
+                  {/* <TableCell>
                     <Chip label={o.status} size="small" />
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell>
                     {o.paid ? (
                       <Chip label="Paid" color="success" size="small" />
@@ -377,33 +411,44 @@ export function Orders({ role }) {
                     )}
                   </TableCell>
                   <TableCell align="right">
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      startIcon={<VisibilityIcon />}
-                      onClick={() => setDisplay(o.id)}
-                      sx={{ mr: 1 }}
-                    >
-                      Display
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => downloadPDF(o)}
-                      sx={{ mr: 1 }}
-                    >
-                      PDF
-                    </Button>
-                    {!o.paid && (
-                      <Button
+                    <Tooltip title="Display">
+                      <IconButton
+                        color="primary"
+                        onClick={() => setDisplay(o.id)}
                         size="small"
-                        variant="contained"
-                        startIcon={<CheckCircleIcon />}
-                        onClick={() => markPaid(o.id)}
                       >
-                        Mark Paid
-                      </Button>
+                        <QueuePlayNextIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Download PDF">
+                      <IconButton
+                        color="primary"
+                        onClick={() => downloadPDF(o)}
+                        size="small"
+                      >
+                        <PictureAsPdfIcon />
+                      </IconButton>
+                    </Tooltip>
+                    {!o.paid && (
+                      <Tooltip title="Mark as paid">
+                        <IconButton
+                          color="primary"
+                          onClick={() => markPaid(o.id)}
+                          size="small"
+                        >
+                          <CheckCircleIcon />
+                        </IconButton>
+                      </Tooltip>
                     )}
+                    <Tooltip title="Delete Order">
+                      <IconButton
+                        color="error"
+                        onClick={() => deleteOrder(o.id)}
+                        size="small"
+                      >
+                        <DeleteOutlineIcon />
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))}

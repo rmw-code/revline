@@ -14,7 +14,7 @@ import {
 import { useEffect, useState } from "react";
 import { LS_KEYS } from "../../enum";
 import { loadLS } from "../../utils";
-import QR from "./../../assets/qr.jpg";
+import QR from "./../../assets/qr.png";
 
 export function CustomerDisplay() {
   const [orders, setOrders] = useState(loadLS(LS_KEYS.ORDERS, []));
