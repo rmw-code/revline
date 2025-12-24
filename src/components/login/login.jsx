@@ -14,14 +14,16 @@ import { LS_KEYS } from "../../enum";
 import { DEFAULT_USERS } from "../../local";
 import RMWLogo from "./../../assets/RMW-transparent.png";
 import styles from "./login.module.scss";
+import { login } from "../../services/authService";
 
 export const Login = ({ onLogin }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    /*
     const users = loadLS(LS_KEYS.USERS, DEFAULT_USERS);
     const user = users.find(
       (u) => u.username === username && u.password === password
@@ -30,6 +32,16 @@ export const Login = ({ onLogin }) => {
     if (!user) return setError("Invalid credentials");
     saveLS(LS_KEYS.SESSION, user);
     onLogin(user);
+    */
+
+    try {
+      setError(""); // Clear previous errors
+      const user = await login(username, password);
+      saveLS(LS_KEYS.SESSION, user);
+      onLogin(user);
+    } catch (err) {
+      setError(err.message || "Invalid credentials");
+    }
   };
 
   return (
@@ -39,7 +51,7 @@ export const Login = ({ onLogin }) => {
     >
       <Paper elevation={3} sx={{ p: 3, width: "100%" }}>
         <Stack className={styles.loginLogo}>
-          <img src={RMWLogo} alt="RMW Logo" style={{ height: 'auto', width:100 }} />
+          <img src={RMWLogo} alt="RMW Logo" style={{ height: 'auto', width: 100 }} />
         </Stack>
 
         <Typography variant="body2" color="text.secondary" gutterBottom>
