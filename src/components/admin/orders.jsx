@@ -1,6 +1,7 @@
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import {
+  Autocomplete,
   Box,
   Button,
   Chip,
@@ -23,59 +24,105 @@ import autoTable from "jspdf-autotable";
 import React, { useEffect, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print";
 import { LS_KEYS } from "../../enum";
-import { DEFAULT_SERVICES } from "../../local";
 import { loadLS, saveLS } from "../../utils";
+import { getServices } from "../../services/serviceService";
+import { getMotorcycles } from "../../services/motorcycleService";
+import { getUsersByRole } from "../../services/userServices";
+import { createOrder as createOrderAPI, getOrders, getOrderById, markOrderAsPaid } from "../../services/orderService";
 import RevlineLogo from "./../../assets/revline_bg_cropped.png";
 
 export function Orders({ role }) {
-  const [services] = useState(loadLS(LS_KEYS.SERVICES, DEFAULT_SERVICES));
-  const [orders, setOrders] = useState(loadLS(LS_KEYS.ORDERS, []));
+  const [services, setServices] = useState([]);
+  const [motorcycles, setMotorcycles] = useState([]);
+  const [mechanics, setMechanics] = useState([]);
+  const [orders, setOrders] = useState([]); // No longer using localStorage
   const [customer, setCustomer] = useState("");
   const [bike, setBike] = useState(""); // 🔹 new state
+  const [selectedMotorcycle, setSelectedMotorcycle] = useState(null); // 🔹 motorcycle object
   const [mechanic, setMechanic] = useState(""); // 🔹 new state
+  const [selectedMechanic, setSelectedMechanic] = useState(null); // 🔹 mechanic object
   const [selected, setSelected] = useState([]);
   const [printOrder, setPrintOrder] = useState(null);
   const [search, setSearch] = useState(""); // 🔹 search services
   const printRef = useRef(null);
 
-  const bikeOptions = [
-    "Yamaha R15 V1",
-    "Yamaha R25 V1",
-    "Yamaha R25 V2",
-    "Yamaha R25 V3",
-    "Yamaha R1 V1",
-    "Yamaha R1 V2",
-    "Yamaha MT-15",
-    "Yamaha MT-25",
-    "Yamaha MT-07 V1",
-    "Yamaha MT-07 V2",
-    "Yamaha MT-09 V1",
-    "Yamaha MT-09 V2",
-    "Yamaha MT-09 V3",
-    "Yamaha MT-09 V4",
-    "Honda EX5",
-    "Honda RS150R",
-    "Honda CBR150",
-    "Honda CBR250 RR",
-    "Honda CBR500 RR",
-    "Honda CBR600",
-    "Honda CBR650 R",
-    "Honda CB250 R",
-    "Honda CB250 R",
-    "Honda CB650 R",
-    "Kawasaki Ninja 250",
-    "Kawasaki Z250",
-    "Kawasaki Z800",
-    "Kawasaki Z900",
-    "Suzuki Raider",
-  ];
-
-  const mechanicOptions = ["Wan", "Syahmi"];
-
   const canCashier = (role) =>
     ["superadmin", "admin", "cashier"].includes(role);
 
-  useEffect(() => saveLS(LS_KEYS.ORDERS, orders), [orders]);
+  useEffect(() => {
+    // Fetch services from API on component mount
+    const fetchServices = async () => {
+      try {
+        const response = await getServices("", 0, 5000);
+        setServices(response.content || []);
+      } catch (error) {
+        console.error("Failed to fetch services:", error);
+      }
+    };
+    fetchServices();
+  }, []);
+
+  useEffect(() => {
+    // Fetch orders from API on component mount
+    const fetchOrders = async () => {
+      try {
+        const response = await getOrders({ page: 0, size: 10 });
+        setOrders(response.content || []);
+      } catch (error) {
+        console.error("Failed to fetch orders:", error);
+      }
+    };
+    fetchOrders();
+  }, []);
+
+  useEffect(() => {
+    // Check localStorage for mechanics list first
+    const cachedMechanics = loadLS(LS_KEYS.MECHANICS, null);
+
+    if (cachedMechanics && cachedMechanics.length > 0) {
+      // Use cached mechanics from localStorage
+      setMechanics(cachedMechanics);
+    } else {
+      // Fetch from API and store in localStorage
+      const fetchMechanics = async () => {
+        try {
+          const response = await getUsersByRole("mechanic", 0, 100);
+          const mechanicsList = response.content || [];
+          setMechanics(mechanicsList);
+          saveLS(LS_KEYS.MECHANICS, mechanicsList);
+        } catch (error) {
+          console.error("Failed to fetch mechanics:", error);
+        }
+      };
+      fetchMechanics();
+    }
+  }, []);
+
+  useEffect(() => {
+    // Check localStorage for motorcycles list first
+    const cachedMotorcycles = loadLS(LS_KEYS.MOTORCYCLES, null);
+
+    if (cachedMotorcycles && cachedMotorcycles.length > 0) {
+      // Use cached motorcycles from localStorage
+      setMotorcycles(cachedMotorcycles);
+    } else {
+      // Fetch from API and store in localStorage
+      const fetchMotorcycles = async () => {
+        try {
+          const response = await getMotorcycles(0, 100);
+          const motorcycleList = response.content || [];
+          setMotorcycles(motorcycleList);
+          saveLS(LS_KEYS.MOTORCYCLES, motorcycleList);
+        } catch (error) {
+          console.error("Failed to fetch motorcycles:", error);
+        }
+      };
+      fetchMotorcycles();
+    }
+  }, []);
+
+  // No longer syncing orders to localStorage
+  // useEffect(() => saveLS(LS_KEYS.ORDERS, orders), [orders]);
 
   const total = selected.reduce((sum, id) => {
     const s = services.find((x) => x.id === id);
@@ -87,129 +134,202 @@ export function Orders({ role }) {
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
 
-  const createOrder = () => {
+  const createOrder = async () => {
     if (!customer || selected.length === 0) return;
-    const items = selected.map((id) => services.find((s) => s.id === id));
-    const order = {
-      id: crypto.randomUUID(),
-      customer,
-      bike,
-      mechanic,
-      items,
-      total,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-      paid: false,
-    };
-    const next = [order, ...orders];
-    setOrders(next);
-    saveLS(LS_KEYS.DISPLAY_ORDER_ID, order.id);
-    setCustomer("");
-    setBike("");
-    setMechanic("");
-    setSelected([]);
+    
+    try {
+      // Get selected services with their details
+      const items = selected.map((id) => services.find((s) => s.id === id));
+      
+      // Prepare services array for API
+      const servicesPayload = items.map((item) => ({
+        name: item.name,
+        price: item.price,
+        details: item.details || "",
+      }));
+
+      // Prepare order data for API
+      const orderData = {
+        customerName: customer,
+        motorcycleName: bike,
+        motorcycleId: selectedMotorcycle?.id || null,
+        mechanicName: mechanic,
+        mechanicId: selectedMechanic?.id || null,
+        status: "PENDING",
+        isPaid: false,
+        services: servicesPayload,
+      };
+
+      // Call API to create order
+      const createdOrder = await createOrderAPI(orderData);
+
+      // Fetch the full order details to get complete data including invoice number
+      const fullOrderDetails = await getOrderById(createdOrder.id);
+      
+      // Add to local orders list for immediate display in table
+      const next = [fullOrderDetails, ...orders];
+      setOrders(next);
+      
+      // Save full order details to localStorage for customer display
+      saveLS(LS_KEYS.DISPLAY_ORDER, fullOrderDetails);
+      
+      // Reset form
+      setCustomer("");
+      setBike("");
+      setSelectedMotorcycle(null);
+      setMechanic("");
+      setSelectedMechanic(null);
+      setSelected([]);
+    } catch (error) {
+      console.error("Failed to create order:", error);
+      alert("Failed to create order. Please try again.");
+    }
   };
 
-  const downloadPDF = (order) => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
+  const downloadPDF = async (order) => {
+    try {
+      // Fetch complete order details from API
+      const fullOrder = await getOrderById(order.id);
+      
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
 
-    // 🔹 Watermark (centered, low opacity)
-    doc.setGState(new doc.GState({ opacity: 0.08 }));
-    const wmSize = 160; // adjust watermark size
-    const wmX = (pageWidth - wmSize) / 2;
-    const wmY = (pageHeight - wmSize) / 3;
-    doc.addImage(RevlineLogo, "PNG", wmX, wmY, wmSize, wmSize);
+      // 🔹 Watermark (centered, low opacity)
+      doc.setGState(new doc.GState({ opacity: 0.08 }));
+      const wmSize = 160; // adjust watermark size
+      const wmX = (pageWidth - wmSize) / 2;
+      const wmY = (pageHeight - wmSize) / 3;
+      doc.addImage(RevlineLogo, "PNG", wmX, wmY, wmSize, wmSize);
 
-    // Reset opacity for normal content
-    doc.setGState(new doc.GState({ opacity: 1 }));
+      // Reset opacity for normal content
+      doc.setGState(new doc.GState({ opacity: 1 }));
 
-    // Header
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text("Service Invoice", 14, 20);
+      // Header
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.text("Service Invoice", 14, 20);
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text(`Customer: ${order.customer}`, 14, 30);
-    doc.text(`Bike: ${order.bike}`, 14, 35);
-    doc.text(`Mechanic: ${order.mechanic}`, 14, 40);
-    doc.text(`Date: ${new Date(order.createdAt).toLocaleString()}`, 14, 50);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.text(`Invoice No: ${fullOrder.invoiceNo || fullOrder.id}`, 14, 30);
+      doc.text(`Customer: ${fullOrder.customerName || fullOrder.customer}`, 14, 35);
+      doc.text(`Bike: ${fullOrder.motorcycleName || fullOrder.bike}`, 14, 40);
+      doc.text(`Mechanic: ${fullOrder.mechanicName || fullOrder.mechanic}`, 14, 45);
+      doc.text(`Date: ${new Date(fullOrder.createAt || fullOrder.createdAt).toLocaleString()}`, 14, 50);
+      
+      // Payment status
+      const paymentStatus = (fullOrder.isPaid || fullOrder.paid) ? "Paid" : "Unpaid";
+      doc.setFont("helvetica", "bold");
+      doc.text(`Status: ${paymentStatus}`, 14, 55);
+      doc.setFont("helvetica", "normal");
 
-    // Logo (top right)
-    const logoWidth = 50;
-    const logoHeight = 20;
-    const marginRight = 14;
-    const logoX = pageWidth - logoWidth - marginRight;
-    const logoY = 14;
-    doc.addImage(RevlineLogo, "PNG", logoX, logoY, logoWidth, logoHeight);
+      // Logo (top right)
+      const logoWidth = 50;
+      const logoHeight = 20;
+      const marginRight = 14;
+      const logoX = pageWidth - logoWidth - marginRight;
+      const logoY = 14;
+      doc.addImage(RevlineLogo, "PNG", logoX, logoY, logoWidth, logoHeight);
 
-    // Address under logo
-    const address = [
-      "E-G-12, Pangsapuri Putra Raya",
-      "Jalan PP 32, Seksyen 2",
-      "Taman Pinggiran Putra",
-      "43300 Seri Kembangan, Selangor",
-      "Business Reg. No: 202503190421 (003752485-M)",
-    ];
-    doc.setFontSize(9);
-    let addressY = logoY + logoHeight + 5;
-    address.forEach((line) => {
-      doc.text(line, pageWidth - marginRight, addressY, { align: "right" });
-      addressY += 5;
-    });
+      // Address under logo
+      const address = [
+        "E-G-12, Pangsapuri Putra Raya",
+        "Jalan PP 32, Seksyen 2",
+        "Taman Pinggiran Putra",
+        "43300 Seri Kembangan, Selangor",
+        "Business Reg. No: 202503190421 (003752485-M)",
+      ];
+      doc.setFontSize(9);
+      let addressY = logoY + logoHeight + 5;
+      address.forEach((line) => {
+        doc.text(line, pageWidth - marginRight, addressY, { align: "right" });
+        addressY += 5;
+      });
 
-    // Ensure table starts AFTER logo + address
-    const tableStartY = Math.max(addressY + 10, 70);
+      // Ensure table starts AFTER logo + address
+      const tableStartY = Math.max(addressY + 10, 70);
 
-    // Table
-    const rows = order.items.map((i) => [i.name, i.details, `RM${i.price.toFixed(2)}`]);
+      // Table - handle both 'services' (API) and 'items' (local) arrays
+      const serviceItems = fullOrder.services || fullOrder.items || [];
+      const rows = serviceItems.map((i) => [i.name, i.details || "-", `RM${i.price.toFixed(2)}`]);
 
-    autoTable(doc, {
-      head: [["Service & Product", "Details", "Price"]],
-      body: rows,
-      startY: tableStartY,
-      styles: { font: "helvetica", fontSize: 10, cellPadding: 6 }, // 🔹 more spacing
-      headStyles: { fillColor: [240, 240, 240], textColor: 20 },
-    });
+      autoTable(doc, {
+        head: [["Service & Product", "Details", "Price"]],
+        body: rows,
+        startY: tableStartY,
+        styles: { font: "helvetica", fontSize: 10, cellPadding: 6 }, // 🔹 more spacing
+        headStyles: { fillColor: [240, 240, 240], textColor: 20 },
+      });
 
-    // Total
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text(
-      `Total: RM${order.total.toFixed(2)}`,
-      14,
-      doc.lastAutoTable.finalY + 12
-    );
+      // Total
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text(
+        `Total: RM${(fullOrder.totalCharge || fullOrder.total || 0).toFixed(2)}`,
+        14,
+        doc.lastAutoTable.finalY + 12
+      );
 
-    // 🔹 Signature & Stamp section
-    const footerY = pageHeight - 40;
+      // 🔹 Signature & Stamp section
+      const footerY = pageHeight - 40;
 
-    // Customer signature (left)
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "normal");
-    doc.text("Customer Signature:", 14, footerY);
+      // Customer signature (left)
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.text("Customer Signature:", 14, footerY);
 
-    // add more vertical spacing before line
-    const signatureLineY = footerY + 20;
-    doc.line(14, signatureLineY, 80, signatureLineY);
+      // add more vertical spacing before line
+      const signatureLineY = footerY + 20;
+      doc.line(14, signatureLineY, 80, signatureLineY);
 
-    // Company stamp (right)
-    const stampBoxWidth = 60;
-    const stampBoxHeight = 30;
-    const stampX = pageWidth - stampBoxWidth - 14;
-    const stampY = footerY - 10;
-    doc.rect(stampX, stampY, stampBoxWidth, stampBoxHeight);
+      // Company stamp (right)
+      const stampBoxWidth = 60;
+      const stampBoxHeight = 30;
+      const stampX = pageWidth - stampBoxWidth - 14;
+      const stampY = footerY - 10;
+      doc.rect(stampX, stampY, stampBoxWidth, stampBoxHeight);
 
-    doc.save(`invoice-${order.id}.pdf`);
+      doc.save(`invoice-${fullOrder.invoiceNo || fullOrder.id}.pdf`);
+    } catch (error) {
+      console.error("Failed to generate PDF:", error);
+      alert("Failed to generate PDF. Please try again.");
+    }
   };
 
-  const markPaid = (id) =>
-    setOrders((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, paid: true } : o))
-    );
-  const setDisplay = (id) => saveLS(LS_KEYS.DISPLAY_ORDER_ID, id);
+  const markPaid = async (id) => {
+    try {
+      // Call API to mark order as paid
+      await markOrderAsPaid(id);
+      
+      // Fetch the updated order details from API to get complete data
+      const updatedOrder = await getOrderById(id);
+      
+      // Update local state with the complete order data
+      setOrders((prev) =>
+        prev.map((o) => (o.id === id ? updatedOrder : o))
+      );
+      
+      console.log(`Order ${id} marked as paid`);
+    } catch (error) {
+      console.error("Failed to mark order as paid:", error);
+      alert("Failed to mark order as paid. Please try again.");
+    }
+  };
+  
+  const setDisplay = async (id) => {
+    try {
+      // Fetch full order details from API
+      const orderDetails = await getOrderById(id);
+      
+      // Store full order details in localStorage for display
+      saveLS(LS_KEYS.DISPLAY_ORDER, orderDetails);
+      
+      console.log("Order details saved for display:", orderDetails);
+    } catch (error) {
+      console.error("Failed to fetch order details:", error);
+    }
+  };
 
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
@@ -234,7 +354,7 @@ export function Orders({ role }) {
             {/* Customer name */}
             <Stack>
               <TextField
-                label="Customer Name"
+                label="Name / Plate No."
                 fullWidth
                 value={customer}
                 onChange={(e) => setCustomer(e.target.value)}
@@ -244,36 +364,72 @@ export function Orders({ role }) {
             {/* Bike dropdown */}
             <Stack flexDirection={"row"} columnGap={2}>
               <Stack width="100%">
-                <TextField
-                  select
-                  label="Bike"
-                  fullWidth
+                <Autocomplete
+                  freeSolo
+                  options={motorcycles}
+                  getOptionLabel={(option) => 
+                    typeof option === 'string' ? option : `${option.brand} ${option.model}`
+                  }
                   value={bike}
-                  onChange={(e) => setBike(e.target.value)}
-                >
-                  {bikeOptions.map((b) => (
-                    <MenuItem key={b} value={b}>
-                      {b}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                  onChange={(event, newValue) => {
+                    if (typeof newValue === 'string') {
+                      setBike(newValue);
+                      setSelectedMotorcycle(null);
+                    } else if (newValue) {
+                      setBike(`${newValue.brand} ${newValue.model}`);
+                      setSelectedMotorcycle(newValue);
+                    } else {
+                      setBike("");
+                      setSelectedMotorcycle(null);
+                    }
+                  }}
+                  onInputChange={(event, newInputValue) => {
+                    setBike(newInputValue);
+                    if (!newInputValue) setSelectedMotorcycle(null);
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Bike"
+                      fullWidth
+                    />
+                  )}
+                />
               </Stack>
 
               {/* Mechanic dropdown */}
               <Stack width="100%">
-                <TextField
-                  select
-                  label="Mechanic"
-                  fullWidth
+                <Autocomplete
+                  freeSolo
+                  options={mechanics}
+                  getOptionLabel={(option) => 
+                    typeof option === 'string' ? option : (option.name || option.email)
+                  }
                   value={mechanic}
-                  onChange={(e) => setMechanic(e.target.value)}
-                >
-                  {mechanicOptions.map((m) => (
-                    <MenuItem key={m} value={m}>
-                      {m}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                  onChange={(event, newValue) => {
+                    if (typeof newValue === 'string') {
+                      setMechanic(newValue);
+                      setSelectedMechanic(null);
+                    } else if (newValue) {
+                      setMechanic(newValue.name || newValue.email);
+                      setSelectedMechanic(newValue);
+                    } else {
+                      setMechanic("");
+                      setSelectedMechanic(null);
+                    }
+                  }}
+                  onInputChange={(event, newInputValue) => {
+                    setMechanic(newInputValue);
+                    if (!newInputValue) setSelectedMechanic(null);
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Mechanic"
+                      fullWidth
+                    />
+                  )}
+                />
               </Stack>
             </Stack>
           </Stack>
@@ -362,15 +518,15 @@ export function Orders({ role }) {
             <TableBody>
               {orders.map((o) => (
                 <TableRow key={o.id} hover>
-                  <TableCell>{o.customer}</TableCell>
-                  <TableCell>{o.bike}</TableCell>
-                  <TableCell>{o.mechanic}</TableCell>
-                  <TableCell>RM{o.total.toFixed(2)}</TableCell>
+                  <TableCell>{o.customerName || o.customer}</TableCell>
+                  <TableCell>{o.motorcycleName || o.bike}</TableCell>
+                  <TableCell>{o.mechanicName || o.mechanic}</TableCell>
+                  <TableCell>RM{(o.totalCharge || o.total || 0).toFixed(2)}</TableCell>
                   <TableCell>
-                    <Chip label={o.status} size="small" />
+                    <Chip label={o.status?.toUpperCase() || "PENDING"} size="small" />
                   </TableCell>
                   <TableCell>
-                    {o.paid ? (
+                    {(o.isPaid || o.paid) ? (
                       <Chip label="Paid" color="success" size="small" />
                     ) : (
                       <Chip label="Unpaid" variant="outlined" size="small" />

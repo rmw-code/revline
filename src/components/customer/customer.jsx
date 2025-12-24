@@ -17,20 +17,22 @@ import { loadLS } from "../../utils";
 import QR from "./../../assets/qr.jpg";
 
 export function CustomerDisplay() {
-  const [orders, setOrders] = useState(loadLS(LS_KEYS.ORDERS, []));
-  const [displayId, setDisplayId] = useState(
-    loadLS(LS_KEYS.DISPLAY_ORDER_ID, null)
-  );
+  const [order, setOrder] = useState(null);
 
   useEffect(() => {
-    const int = setInterval(() => {
-      setOrders(loadLS(LS_KEYS.ORDERS, []));
-      setDisplayId(loadLS(LS_KEYS.DISPLAY_ORDER_ID, null));
-    }, 800);
-    return () => clearInterval(int);
-  }, []);
+    // Poll for order updates from localStorage
+    const fetchOrder = () => {
+      const displayOrder = loadLS(LS_KEYS.DISPLAY_ORDER, null);
+      setOrder(displayOrder);
+    };
 
-  const order = orders.find((o) => o.id === displayId);
+    // Initial fetch
+    fetchOrder();
+
+    // Poll for changes every 800ms
+    const interval = setInterval(fetchOrder, 800);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
@@ -65,39 +67,52 @@ export function CustomerDisplay() {
                   alignItems="center"
                   mb={2}
                 >
-                  <Typography variant="h6">
-                    Customer: {order.customer}
-                  </Typography>
+                  <Stack>
+                    <Typography variant="h6">
+                      Customer: {order.customerName || order.customer}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Invoice: {order.invoiceNo || order.id}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Bike: {order.motorcycleName || order.bike}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Mechanic: {order.mechanicName || order.mechanic}
+                    </Typography>
+                  </Stack>
                   <Chip
-                    label={order.paid ? "Paid" : "Unpaid"}
-                    color={order.paid ? "success" : "default"}
-                    variant={order.paid ? "filled" : "outlined"}
+                    label={(order.isPaid || order.paid) ? "Paid" : "Unpaid"}
+                    color={(order.isPaid || order.paid) ? "success" : "default"}
+                    variant={(order.isPaid || order.paid) ? "filled" : "outlined"}
                   />
                 </Box>
                 <Table size="large">
                   <TableHead>
                     <TableRow>
                       <TableCell>Service</TableCell>
+                      <TableCell>Details</TableCell>
                       <TableCell>Price</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {order.items.map((i) => (
+                    {(order.services || order.items || []).map((i) => (
                       <TableRow key={i.id}>
                         <TableCell>{i.name}</TableCell>
+                        <TableCell>{i.details || "-"}</TableCell>
                         <TableCell>RM{i.price.toFixed(2)}</TableCell>
                       </TableRow>
                     ))}
                     <TableRow>
                       <TableCell
-                        colSpan={1}
+                        colSpan={2}
                         align="right"
                         sx={{ fontWeight: 600 }}
                       >
                         Total
                       </TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>
-                        RM{order.total.toFixed(2)}
+                        RM{(order.totalCharge || order.total || 0).toFixed(2)}
                       </TableCell>
                     </TableRow>
                   </TableBody>
@@ -109,7 +124,10 @@ export function CustomerDisplay() {
                   color="text.secondary"
                 >
                   <Typography variant="body2">
-                    Created: {new Date(order.createdAt).toLocaleString()}
+                    Created: {new Date(order.createAt || order.createdAt).toLocaleString()}
+                  </Typography>
+                  <Typography variant="body2">
+                    Status: {order.status?.toUpperCase() || "PENDING"}
                   </Typography>
                 </Box>
               </Paper>

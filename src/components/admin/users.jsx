@@ -23,13 +23,11 @@ import {
     Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
-import { LS_KEYS } from "../../enum";
-import { DEFAULT_USERS } from "../../local";
-import { loadLS, saveLS } from "../../utils";
+import { getUsers } from "../../services/userServices";
 import { ROLES } from "../../constants";
 
 export function Users({ role }) {
-  const [users, setUsers] = useState(loadLS(LS_KEYS.USERS, DEFAULT_USERS));
+  const [users, setUsers] = useState([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
@@ -42,7 +40,18 @@ export function Users({ role }) {
   });
   const canManageUsers = (role) => role === "superadmin";
 
-  useEffect(() => saveLS(LS_KEYS.USERS, users), [users]);
+  useEffect(() => {
+    // Fetch users from API on component mount
+    const fetchUsers = async () => {
+      try {
+        const response = await getUsers(0, 100);
+        setUsers(response.content || []);
+      } catch (error) {
+        console.error("Failed to fetch users:", error);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   if (!canManageUsers(role))
     return (
@@ -89,9 +98,10 @@ export function Users({ role }) {
         <Button
           startIcon={<PeopleIcon />}
           variant="contained"
-          onClick={() => setOpen(true)}
+          onClick={() => { setEditing(false); setOpen(true); reset(); }}
         >
-          {editing ? "Edit User" : "Add User"}
+          {/* {editing ? "Edit User" : "Add User"} */}
+          Add User
         </Button>
       </Box>
 

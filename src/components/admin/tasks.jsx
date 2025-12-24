@@ -11,18 +11,35 @@ import {
   Checkbox,
   FormControlLabel,
   Stack,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import { useEffect, useState } from "react";
-import { LS_KEYS } from "../../enum";
-import { loadLS, saveLS } from "../../utils";
+import { getOrders, updateOrderStatus } from "../../services/orderService";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export function Tasks({ role }) {
-  const [orders, setOrders] = useState(loadLS(LS_KEYS.ORDERS, []));
+  const [orders, setOrders] = useState([]);
   const [selected, setSelected] = useState([]); // track selected customers
 
-  useEffect(() => saveLS(LS_KEYS.ORDERS, orders), [orders]);
+  useEffect(() => {
+    // Fetch PENDING and IN-PROGRESS orders from API on component mount
+    const fetchPendingOrders = async () => {
+      try {
+        const response = await getOrders({ 
+          status: ["PENDING", "IN-PROGRESS"],
+          includeServices: true,
+          page: 0, 
+          size: 500 
+        });
+        setOrders(response.content || []);
+      } catch (error) {
+        console.error("Failed to fetch pending orders:", error);
+      }
+    };
+    fetchPendingOrders();
+  }, []);
 
   const canMechanic = (role) =>
     ["superadmin", "admin", "mechanic"].includes(role);
@@ -34,22 +51,22 @@ export function Tasks({ role }) {
       </Typography>
     );
 
-  const toggleStatus = (id) =>
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === id
-          ? {
-              ...o,
-              status:
-                o.status === "pending"
-                  ? "in-progress"
-                  : o.status === "in-progress"
-                  ? "completed"
-                  : "pending",
-            }
-          : o
-      )
-    );
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      // Call API to update order status
+      await updateOrderStatus(id, newStatus);
+      
+      // Update local state
+      setOrders((prev) =>
+        prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o))
+      );
+      
+      console.log(`Order ${id} status updated to ${newStatus}`);
+    } catch (error) {
+      console.error("Failed to update order status:", error);
+      alert("Failed to update order status. Please try again.");
+    }
+  };
 
   const toggleItem = (orderId, itemIndex) => {
     setOrders((prev) =>
@@ -81,9 +98,8 @@ export function Tasks({ role }) {
     const filtered = orders.filter((o) => selected.includes(o.id));
 
     const rows = filtered.map((o) => [
-      o.customer,
-      o.items.map((i) => (i.done ? "[x] " : "[   ] ") + i.name).join("\n\n"),
-      // o.status,
+      o.customerName || o.customer,
+      (o.services || o.items || []).map((i) => (i.done ? "[x] " : "[   ] ") + i.name).join("\n\n"),
     ]);
 
     autoTable(doc, {
@@ -125,6 +141,7 @@ export function Tasks({ role }) {
           <TableRow>
             <TableCell />
             <TableCell>Customer</TableCell>
+            <TableCell>Mechanic</TableCell>
             <TableCell>Checklist</TableCell>
             <TableCell>Status</TableCell>
             <TableCell align="right">Advance</TableCell>
@@ -139,12 +156,12 @@ export function Tasks({ role }) {
                   onChange={() => toggleSelect(o.id)}
                 />
               </TableCell>
-              <TableCell>{o.customer}</TableCell>
+              <TableCell>{o.customerName || o.customer}</TableCell>
+              <TableCell>{o.mechanicName || o.mechanic || "-"}</TableCell>
               <TableCell>
-                {o.items.map((i, idx) => (
-                  <div>
+                {(o.services || o.items || []).map((i, idx) => (
+                  <div key={idx}>
                     <FormControlLabel
-                      key={idx}
                       control={
                         <Checkbox
                           checked={i.done || false}
@@ -158,12 +175,19 @@ export function Tasks({ role }) {
                 ))}
               </TableCell>
               <TableCell>
-                <Chip label={o.status} size="small" />
+                <Chip label={o.status?.toUpperCase() || "PENDING"} size="small" />
               </TableCell>
               <TableCell align="right">
-                <Button size="small" onClick={() => toggleStatus(o.id)}>
-                  Next
-                </Button>
+                <Select
+                  size="small"
+                  value={o.status || "PENDING"}
+                  onChange={(e) => handleStatusChange(o.id, e.target.value)}
+                  sx={{ minWidth: 140 }}
+                >
+                  <MenuItem value="PENDING">PENDING</MenuItem>
+                  <MenuItem value="IN-PROGRESS">IN-PROGRESS</MenuItem>
+                  <MenuItem value="COMPLETED">COMPLETED</MenuItem>
+                </Select>
               </TableCell>
             </TableRow>
           ))}
