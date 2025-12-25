@@ -2,6 +2,7 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import {
+  Autocomplete,
   Box,
   Button,
   Dialog,
@@ -11,6 +12,10 @@ import {
   FormControl,
   Grid,
   IconButton,
+  InputLabel,
+  OutlinedInput,
+  Checkbox,
+  ListItemText,
   MenuItem,
   Paper,
   Select,
@@ -25,11 +30,21 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { getServices, updateService, createService, deleteService } from "../../services/serviceService";
+import { getMotorcycles } from "../../services/motorcycleService";
+import { getServiceTypes } from "../../services/serviceTypesService";
 import { LS_KEYS } from "../../enum";
 import { DEFAULT_SERVICES } from "../../local";
 import { loadLS, saveLS } from "../../utils";
 
 const canManageServices = (role) => role === "superadmin" || role === "admin";
+
+// Helper function to format motorcycle list
+const formatMotorcycleList = (motorcycleList) => {
+  if (!motorcycleList || motorcycleList.length === 0) {
+    return "-";
+  }
+  return motorcycleList.map(bike => `${bike.brand} ${bike.model}`).join(", ");
+};
 
 export function Catalog({ role }) {
   /*
@@ -38,6 +53,10 @@ export function Catalog({ role }) {
   );
   */
   const [services, setServices] = useState([]);
+  const [bikeList, setBikeList] = useState([]); // Array of formatted strings for display
+  const [motorcycleObjects, setMotorcycleObjects] = useState([]); // Full objects with IDs
+  const [itemTypeList, setItemTypeList] = useState([]); // Array of type names for display
+  const [serviceTypeObjects, setServiceTypeObjects] = useState([]); // Full objects with IDs
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -46,6 +65,9 @@ export function Catalog({ role }) {
     name: "",
     price: 0,
     details: "",
+    quantity: 0,
+    bike: [],
+    type: "",
   });
 
   /*
@@ -61,6 +83,44 @@ export function Catalog({ role }) {
     });
   }, [services, q]);
   */
+
+  // Fetch motorcycles on component mount
+  useEffect(() => {
+    const fetchMotorcycles = async () => {
+      try {
+        const data = await getMotorcycles(0, 5000);
+        if (data.content) {
+          setMotorcycleObjects(data.content);
+          const bikes = data.content.map(bike => `${bike.brand} ${bike.model}`);
+          setBikeList(bikes);
+        } else if (Array.isArray(data)) {
+          setMotorcycleObjects(data);
+          const bikes = data.map(bike => `${bike.brand} ${bike.model}`);
+          setBikeList(bikes);
+        }
+      } catch (error) {
+        console.error("Failed to fetch motorcycles", error);
+      }
+    };
+    fetchMotorcycles();
+  }, []);
+
+  // Fetch service types on component mount
+  useEffect(() => {
+    const fetchServiceTypes = async () => {
+      try {
+        const data = await getServiceTypes();
+        if (Array.isArray(data)) {
+          setServiceTypeObjects(data);
+          const types = data.map(type => type.name);
+          setItemTypeList(types);
+        }
+      } catch (error) {
+        console.error("Failed to fetch service types", error);
+      }
+    };
+    fetchServiceTypes();
+  }, []);
 
   // New API Integration
   useEffect(() => {
@@ -95,6 +155,9 @@ export function Catalog({ role }) {
       name: "",
       price: 0,
       details: "",
+      quantity: 0,
+      bike: [],
+      type: "",
     });
     setEditing(false);
   };
@@ -123,18 +186,36 @@ export function Catalog({ role }) {
   const handleSave = async () => {
     if (!form.name.trim()) return;
 
+    // Get service type ID from the selected type name
+    const serviceType = serviceTypeObjects.find(st => st.name === form.type);
+    const serviceTypeId = serviceType ? serviceType.id : null;
+
+    // Get motorcycle IDs from selected bike strings
+    const motorcycleIds = form.bike.map(bikeStr => {
+      const motorcycle = motorcycleObjects.find(
+        m => `${m.brand} ${m.model}` === bikeStr
+      );
+      return motorcycle ? motorcycle.id : null;
+    }).filter(id => id !== null);
+
     try {
       if (editing) {
         await updateService(form.id, {
           name: form.name,
           price: Number(form.price),
           details: form.details,
+          quantity: Number(form.quantity),
+          serviceTypeId: serviceTypeId,
+          motorcycleIds: motorcycleIds,
         });
       } else {
         await createService({
           name: form.name,
           price: Number(form.price),
           details: form.details,
+          quantity: Number(form.quantity),
+          serviceTypeId: serviceTypeId,
+          motorcycleIds: motorcycleIds,
         });
       }
 
@@ -181,7 +262,7 @@ export function Catalog({ role }) {
         <Grid xs={12} md={6}>
           <TextField
             fullWidth
-            label="Search services or details"
+            label="Search by services | bike | type | details"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -193,6 +274,9 @@ export function Catalog({ role }) {
           <TableRow>
             <TableCell>Service</TableCell>
             <TableCell>Price</TableCell>
+            <TableCell>Qty</TableCell>
+            <TableCell>Bike</TableCell>
+            <TableCell>Type</TableCell>
             <TableCell>Details</TableCell>
             {canManageServices(role) && (
               <TableCell align="right">Actions</TableCell>
@@ -204,6 +288,19 @@ export function Catalog({ role }) {
             <TableRow key={s.id} hover>
               <TableCell>{s.name}</TableCell>
               <TableCell>RM{s.price.toFixed(2)}</TableCell>
+              <TableCell>{s.quantity || 0}</TableCell>
+              <TableCell
+                title={formatMotorcycleList(s.motorcycleList)}
+                style={{
+                  maxWidth: 200,
+                  whiteSpace: "nowrap",
+                  textOverflow: "ellipsis",
+                  overflow: "hidden",
+                }}
+              >
+                {formatMotorcycleList(s.motorcycleList)}
+              </TableCell>
+              <TableCell>{s.serviceTypeName || "-"}</TableCell>
               <TableCell
                 title={s.details}
                 style={{
@@ -266,6 +363,43 @@ export function Catalog({ role }) {
                 onChange={(e) =>
                   setForm({ ...form, price: Number(e.target.value) })
                 }
+              />
+              <TextField
+                label="Quantity"
+                type="number"
+                fullWidth
+                value={form.quantity}
+                onChange={(e) =>
+                  setForm({ ...form, quantity: Number(e.target.value) })
+                }
+              />
+            </Stack>
+            <Stack flexDirection={"row"} columnGap={2}>
+              <Autocomplete
+                multiple
+                fullWidth
+                options={bikeList}
+                value={form.bike ?? []}
+                onChange={(event, newValue) => {
+                  setForm({ ...form, bike: newValue });
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Bike" placeholder="Select bikes" />
+                )}
+                isOptionEqualToValue={(option, value) => option === value}
+              />
+
+              <Autocomplete
+                fullWidth
+                options={itemTypeList}
+                value={form?.type || null}
+                onChange={(event, newValue) => {
+                  setForm({ ...form, type: newValue || "" });
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Type" placeholder="Select type" />
+                )}
+                isOptionEqualToValue={(option, value) => option === value}
               />
             </Stack>
             <Stack>
