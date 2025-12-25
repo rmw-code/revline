@@ -37,6 +37,9 @@ export function Orders({ role }) {
   const [mechanics, setMechanics] = useState([]);
   const [orders, setOrders] = useState([]); // No longer using localStorage
   const [customer, setCustomer] = useState("");
+  const [phoneNo, setPhoneNo] = useState(""); // 🔹 new state
+  const [platNo, setPlatNo] = useState(""); // 🔹 new state
+  const [mileage, setMileage] = useState(""); // 🔹 new state
   const [bike, setBike] = useState(""); // 🔹 new state
   const [selectedMotorcycle, setSelectedMotorcycle] = useState(null); // 🔹 motorcycle object
   const [mechanic, setMechanic] = useState(""); // 🔹 new state
@@ -151,6 +154,9 @@ export function Orders({ role }) {
       // Prepare order data for API
       const orderData = {
         customerName: customer,
+        phoneNumber: phoneNo,
+        plateNumber: platNo,
+        mileage: mileage,
         motorcycleName: bike,
         motorcycleId: selectedMotorcycle?.id || null,
         mechanicName: mechanic,
@@ -175,6 +181,9 @@ export function Orders({ role }) {
       
       // Reset form
       setCustomer("");
+      setPhoneNo("");
+      setPlatNo("");
+      setMileage("");
       setBike("");
       setSelectedMotorcycle(null);
       setMechanic("");
@@ -344,94 +353,114 @@ export function Orders({ role }) {
     );
 
   return (
-    <Grid container spacing={2}>
-      <Grid item xs={12} md={12}>
+    <Grid width={"100%"} container spacing={2}>
+      <Grid width={"100%"} item xs={12} md={12}>
         <Paper variant="outlined" sx={{ p: 2, height: "100%" }}>
           <Typography variant="h6" gutterBottom>
             Create Order
           </Typography>
           <Stack spacing={2}>
+             <Stack flexDirection={"row"} columnGap={2}>
             {/* Customer name */}
-            <Stack>
+            <Stack width="100%">
               <TextField
-                label="Name / Plate No."
+                label="Customer Name"
                 fullWidth
                 value={customer}
                 onChange={(e) => setCustomer(e.target.value)}
               />
             </Stack>
-
-            {/* Bike dropdown */}
-            <Stack flexDirection={"row"} columnGap={2}>
-              <Stack width="100%">
-                <Autocomplete
-                  freeSolo
-                  options={motorcycles}
-                  getOptionLabel={(option) => 
-                    typeof option === 'string' ? option : `${option.brand} ${option.model}`
-                  }
-                  value={bike}
-                  onChange={(event, newValue) => {
-                    if (typeof newValue === 'string') {
-                      setBike(newValue);
-                      setSelectedMotorcycle(null);
-                    } else if (newValue) {
-                      setBike(`${newValue.brand} ${newValue.model}`);
-                      setSelectedMotorcycle(newValue);
-                    } else {
-                      setBike("");
-                      setSelectedMotorcycle(null);
-                    }
-                  }}
-                  onInputChange={(event, newInputValue) => {
-                    setBike(newInputValue);
-                    if (!newInputValue) setSelectedMotorcycle(null);
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Bike"
-                      fullWidth
-                    />
-                  )}
-                />
-              </Stack>
-
-              {/* Mechanic dropdown */}
-              <Stack width="100%">
-                <Autocomplete
-                  freeSolo
-                  options={mechanics}
-                  getOptionLabel={(option) => 
-                    typeof option === 'string' ? option : (option.name || option.email)
-                  }
-                  value={mechanic}
-                  onChange={(event, newValue) => {
-                    if (typeof newValue === 'string') {
-                      setMechanic(newValue);
-                      setSelectedMechanic(null);
-                    } else if (newValue) {
-                      setMechanic(newValue.name || newValue.email);
-                      setSelectedMechanic(newValue);
-                    } else {
-                      setMechanic("");
-                      setSelectedMechanic(null);
-                    }
-                  }}
-                  onInputChange={(event, newInputValue) => {
-                    setMechanic(newInputValue);
-                    if (!newInputValue) setSelectedMechanic(null);
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Mechanic"
-                      fullWidth
-                    />
-                  )}
-                />
-              </Stack>
+            <Stack width="100%">
+              <TextField
+                label="Phone Number"
+                fullWidth
+                value={phoneNo}
+                onChange={(e) => setPhoneNo(e.target.value)}
+              />
             </Stack>
+            <Stack width="100%">
+              <TextField
+                label="Plate Number"
+                fullWidth
+                value={platNo}
+                onChange={(e) => setPlatNo(e.target.value)}
+              />
+            </Stack>
+            <Stack width="100%">
+              <TextField
+                label="Mileage"
+                fullWidth
+                value={mileage}
+                onChange={(e) => setMileage(e.target.value)}
+              />
+            </Stack>
+            <Stack width="100%">
+              <Autocomplete
+                freeSolo
+                options={motorcycles}
+                getOptionLabel={(option) => 
+                  typeof option === 'string' ? option : `${option.brand} ${option.model}`
+                }
+                value={bike}
+                onChange={(event, newValue) => {
+                  if (typeof newValue === 'string') {
+                    setBike(newValue);
+                    setSelectedMotorcycle(null);
+                  } else if (newValue) {
+                    setBike(`${newValue.brand} ${newValue.model}`);
+                    setSelectedMotorcycle(newValue);
+                  } else {
+                    setBike("");
+                    setSelectedMotorcycle(null);
+                  }
+                }}
+                onInputChange={(event, newInputValue) => {
+                  setBike(newInputValue);
+                  if (!newInputValue) setSelectedMotorcycle(null);
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Bike"
+                    fullWidth
+                  />
+                )}
+              />
+            </Stack>
+            <Stack width="100%">
+              <Autocomplete
+                freeSolo
+                options={mechanics}
+                getOptionLabel={(option) => 
+                  typeof option === 'string' ? option : (option.name || option.email)
+                }
+                value={mechanic}
+                onChange={(event, newValue) => {
+                  if (typeof newValue === 'string') {
+                    setMechanic(newValue);
+                    setSelectedMechanic(null);
+                  } else if (newValue) {
+                    setMechanic(newValue.name || newValue.email);
+                    setSelectedMechanic(newValue);
+                  } else {
+                    setMechanic("");
+                    setSelectedMechanic(null);
+                  }
+                }}
+                onInputChange={(event, newInputValue) => {
+                  setMechanic(newInputValue);
+                  if (!newInputValue) setSelectedMechanic(null);
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Mechanic"
+                    fullWidth
+                  />
+                )}
+              />
+            </Stack>
+           </Stack>
           </Stack>
 
           <Divider sx={{ my: 2 }} />
@@ -507,6 +536,9 @@ export function Orders({ role }) {
             <TableHead>
               <TableRow>
                 <TableCell>Customer</TableCell>
+                <TableCell>Phone No</TableCell>
+                <TableCell>Plat No</TableCell>
+                <TableCell>Mileage</TableCell>
                 <TableCell>Bike</TableCell>
                 <TableCell>Mechanic</TableCell>
                 <TableCell>Total</TableCell>
@@ -519,6 +551,9 @@ export function Orders({ role }) {
               {orders.map((o) => (
                 <TableRow key={o.id} hover>
                   <TableCell>{o.customerName || o.customer}</TableCell>
+                  <TableCell>{o.phoneNumber || "-"}</TableCell>
+                  <TableCell>{o.plateNumber || "-"}</TableCell>
+                  <TableCell>{o.mileage || "-"}</TableCell>
                   <TableCell>{o.motorcycleName || o.bike}</TableCell>
                   <TableCell>{o.mechanicName || o.mechanic}</TableCell>
                   <TableCell>RM{(o.totalCharge || o.total || 0).toFixed(2)}</TableCell>
@@ -550,7 +585,7 @@ export function Orders({ role }) {
                     >
                       PDF
                     </Button>
-                    {!o.paid && (
+                    {!o.isPaid && !o.paid && (
                       <Button
                         size="small"
                         variant="contained"
@@ -566,7 +601,7 @@ export function Orders({ role }) {
               {orders.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={10}
                     align="center"
                     sx={{ py: 6, color: "text.secondary" }}
                   >
