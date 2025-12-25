@@ -1,1 +1,1 @@
-export const itemTypeList = ["Parts and Labour", "Labour", "Parts", "Add On"];
+export const itemTypeList = ["Parts and Labour", "Labour", "Parts", "Used Parts", "Add On"];

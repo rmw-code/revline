@@ -38,11 +38,17 @@ export const bikeList = [
   "Kawasaki Ninja 250",
   "Kawasaki Ninja ZX25RR",
   "Kawasaki Ninja ZX25R SE",
+  "Kawasaki Ninja 650",
   "Kawasaki Z250",
+  "Kawasaki Z750",
   "Kawasaki Z800",
   "Kawasaki Z900",
   "Kawasaki ZX1000",
   "Suzuki Raider",
   "Suzuki GSXR 600",
   "Suzuki GSXR 1000",
-];
+  "Suzuki Vstorm 250 SX",
+  "CFMOTO 675 SR-R",
+  "CFMOTO 450 SR",
+  "Benelli RFS150i",
+]

@@ -162,7 +162,7 @@ export function Catalog({ role }) {
           <TableRow>
             <TableCell>Service</TableCell>
             <TableCell>Price</TableCell>
-            <TableCell>Quantity</TableCell>
+            <TableCell>Qty</TableCell>
             <TableCell>Bike</TableCell>
             <TableCell>Type</TableCell>
             <TableCell>Details</TableCell>

@@ -316,9 +316,10 @@ export function Orders({ role }) {
                 <TableRow>
                   <TableCell>Pick</TableCell>
                   <TableCell>Service</TableCell>
-                  <TableCell>Quantity</TableCell>
+                  <TableCell>Qty</TableCell>
                   <TableCell>Type</TableCell>
                   <TableCell>Details</TableCell>
+                  <TableCell>Bike</TableCell>
                   <TableCell>Price</TableCell>
                 </TableRow>
               </TableHead>
@@ -346,7 +347,18 @@ export function Orders({ role }) {
                       <TableCell>{s.name}</TableCell>
                       <TableCell>{s.quantity > 0 ? s.quantity : "-"}</TableCell>
                       <TableCell>{s.type}</TableCell>
-                      <TableCell>{s.details ?? "-"}</TableCell>
+                      <TableCell>{s.details ? s.details : "-"}</TableCell>
+                      <TableCell
+                        title={s.bike}
+                        style={{
+                          maxWidth: 140,
+                          whiteSpace: "nowrap",
+                          textOverflow: "ellipsis",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {Array.isArray(s.bike) ? s.bike.join(", ") : s.bike}
+                      </TableCell>{" "}
                       <TableCell>RM{s.price.toFixed(2)}</TableCell>
                     </TableRow>
                   ))}
