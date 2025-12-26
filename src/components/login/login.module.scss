@@ -1,5 +1,17 @@
 .loginLogo {
     display: flex;
     align-items: center;
-    margin:1rem;
+    margin: 1rem;
+    margin-bottom: 2rem;
+}
+
+.loginButton {
+    background-color: #18006a !important;
+    margin-top: 20px !important;
+}
+
+@media (max-width: 480px) {
+    .loginCardContainer {
+        margin-top: 100px
+    }
 }

@@ -61,6 +61,10 @@ function Shell() {
   );
 }
 
+const comingSoon = () => {
+
+}
+
 function TabsWrapper({ role }) {
   const [tab, setTab] = useState(0);
   return (
@@ -68,14 +72,18 @@ function TabsWrapper({ role }) {
       <Tabs value={tab} onChange={(_, v) => setTab(v)} aria-label="main tabs">
         <Tab label="Catalog" />
         <Tab label="Orders" />
+        <Tab label="Inventory" />
         <Tab label="Tasks" />
+        <Tab label="Leave" />
+        <Tab label="Attendance" />
         <Tab label="Users" />
       </Tabs>
       <Box sx={{ mt: 2 }}>
         {tab === 0 && <Catalog role={role} />}
         {tab === 1 && <Orders role={role} />}
-        {tab === 2 && <Tasks role={role} />}
-        {tab === 3 && <Users role={role} />}
+        {tab === 2 && <>Coming Soon</>}
+        {tab === 3 && <Tasks role={role} />}
+        {tab === 6 && <Users role={role} />}
       </Box>
     </Box>
   );

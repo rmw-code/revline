@@ -12,7 +12,7 @@ import { useState } from "react";
 import { loadLS, saveLS } from "../../utils";
 import { LS_KEYS } from "../../enum";
 import { DEFAULT_USERS } from "../../local";
-import RMWLogo from "./../../assets/RMW-transparent.png";
+import RMWLogo from "./../../assets/RMW.png";
 import styles from "./login.module.scss";
 import { login } from "../../services/authService";
 
@@ -45,18 +45,20 @@ export const Login = ({ onLogin }) => {
   };
 
   return (
-    <Container
-      maxWidth="xs"
-      sx={{ minHeight: "100vh", display: "grid", placeItems: "center" }}
-    >
+    <Container maxWidth="xs" sx={{ display: "grid", placeItems: "center" }} className={styles.loginCardContainer}>
       <Paper elevation={3} sx={{ p: 3, width: "100%" }}>
         <Stack className={styles.loginLogo}>
-          <img src={RMWLogo} alt="RMW Logo" style={{ height: 'auto', width: 100 }} />
+          <img
+            src={RMWLogo}
+            alt="RMW Logo"
+            style={{ height: "auto", width: 180 }}
+          />
         </Stack>
-
-        <Typography variant="body2" color="text.secondary" gutterBottom>
-          Sign in to continue
-        </Typography>
+        <Stack sx={{ mb: "20px" }}>
+          <Typography variant="body2" color="text.secondary">
+            Sign in to continue
+          </Typography>
+        </Stack>
         <Box
           component="form"
           onSubmit={handleSubmit}
@@ -83,7 +85,12 @@ export const Login = ({ onLogin }) => {
               {error}
             </Alert>
           )}
-          <Button type="submit" variant="contained" fullWidth>
+          <Button
+            type="submit"
+            variant="contained"
+            fullWidth
+            className={styles.loginButton}
+          >
             Login
           </Button>
         </Box>
