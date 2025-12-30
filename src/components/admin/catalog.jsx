@@ -9,16 +9,9 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControl,
   Grid,
   IconButton,
-  InputLabel,
-  OutlinedInput,
-  Checkbox,
-  ListItemText,
-  MenuItem,
   Paper,
-  Select,
   Stack,
   Table,
   TableBody,
@@ -26,15 +19,18 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Typography,
+  Typography
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
-import { getServices, updateService, createService, deleteService } from "../../services/serviceService";
+import { useEffect, useState } from "react";
 import { getMotorcycles } from "../../services/motorcycleService";
+import {
+  createService,
+  deleteService,
+  getServices,
+  updateService,
+} from "../../services/serviceService";
 import { getServiceTypes } from "../../services/serviceTypesService";
-import { LS_KEYS } from "../../enum";
-import { DEFAULT_SERVICES } from "../../local";
-import { loadLS, saveLS } from "../../utils";
+import styles from "./admin.module.scss";
 
 const canManageServices = (role) => role === "superadmin" || role === "admin";
 
@@ -43,7 +39,7 @@ const formatMotorcycleList = (motorcycleList) => {
   if (!motorcycleList || motorcycleList.length === 0) {
     return "-";
   }
-  return motorcycleList.map(bike => `${bike.brand} ${bike.model}`).join(", ");
+  return motorcycleList.map((bike) => `${bike.brand} ${bike.model}`).join(", ");
 };
 
 export function Catalog({ role }) {
@@ -91,11 +87,13 @@ export function Catalog({ role }) {
         const data = await getMotorcycles(0, 5000);
         if (data.content) {
           setMotorcycleObjects(data.content);
-          const bikes = data.content.map(bike => `${bike.brand} ${bike.model}`);
+          const bikes = data.content.map(
+            (bike) => `${bike.brand} ${bike.model}`
+          );
           setBikeList(bikes);
         } else if (Array.isArray(data)) {
           setMotorcycleObjects(data);
-          const bikes = data.map(bike => `${bike.brand} ${bike.model}`);
+          const bikes = data.map((bike) => `${bike.brand} ${bike.model}`);
           setBikeList(bikes);
         }
       } catch (error) {
@@ -112,7 +110,7 @@ export function Catalog({ role }) {
         const data = await getServiceTypes();
         if (Array.isArray(data)) {
           setServiceTypeObjects(data);
-          const types = data.map(type => type.name);
+          const types = data.map((type) => type.name);
           setItemTypeList(types);
         }
       } catch (error) {
@@ -127,7 +125,7 @@ export function Catalog({ role }) {
     const fetchServices = async () => {
       try {
         const data = await getServices(q, 0, 100);
-        // Assuming response is Page<Service> or List<Service>. 
+        // Assuming response is Page<Service> or List<Service>.
         // If it's a Page object (content, totalElements, etc.), we extract content.
         // Adjust based on typical Spring Boot Page response or the actual return.
         // The prompt says "response contain 'token'..." for login, but here "retrieve all services".
@@ -167,7 +165,6 @@ export function Catalog({ role }) {
     setOpen(true);
   };
 
-  // Centralized function to refresh services list
   const refreshServices = async () => {
     try {
       const data = await getServices(q, 0, 100);
@@ -187,16 +184,18 @@ export function Catalog({ role }) {
     if (!form.name.trim()) return;
 
     // Get service type ID from the selected type name
-    const serviceType = serviceTypeObjects.find(st => st.name === form.type);
+    const serviceType = serviceTypeObjects.find((st) => st.name === form.type);
     const serviceTypeId = serviceType ? serviceType.id : null;
 
     // Get motorcycle IDs from selected bike strings
-    const motorcycleIds = form.bike.map(bikeStr => {
-      const motorcycle = motorcycleObjects.find(
-        m => `${m.brand} ${m.model}` === bikeStr
-      );
-      return motorcycle ? motorcycle.id : null;
-    }).filter(id => id !== null);
+    const motorcycleIds = form.bike
+      .map((bikeStr) => {
+        const motorcycle = motorcycleObjects.find(
+          (m) => `${m.brand} ${m.model}` === bikeStr
+        );
+        return motorcycle ? motorcycle.id : null;
+      })
+      .filter((id) => id !== null);
 
     try {
       if (editing) {
@@ -243,7 +242,7 @@ export function Catalog({ role }) {
   };
 
   return (
-    <Paper variant="outlined" sx={{ p: 2 }}>
+    <Paper variant="outlined" sx={{ p: 2 }} className={styles.catalogContainer}>
       <Box
         display="flex"
         justifyContent="space-between"
@@ -252,14 +251,19 @@ export function Catalog({ role }) {
       >
         <Typography variant="h6">Service Catalog</Typography>
         {canManageServices(role) && (
-          <Button startIcon={<AddIcon />} variant="contained" onClick={openAdd}>
+          <Button
+            startIcon={<AddIcon />}
+            variant="contained"
+            onClick={openAdd}
+            sx={{ backgroundColor: "#18006a" }}
+          >
             New Service
           </Button>
         )}
       </Box>
 
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid xs={12} md={6}>
+        <Grid xs={12} md={12}>
           <TextField
             fullWidth
             label="Search by services | bike | type | details"
@@ -269,74 +273,76 @@ export function Catalog({ role }) {
         </Grid>
       </Grid>
 
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>Service</TableCell>
-            <TableCell>Price</TableCell>
-            <TableCell>Qty</TableCell>
-            <TableCell>Bike</TableCell>
-            <TableCell>Type</TableCell>
-            <TableCell>Details</TableCell>
-            {canManageServices(role) && (
-              <TableCell align="right">Actions</TableCell>
-            )}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {filtered.map((s) => (
-            <TableRow key={s.id} hover>
-              <TableCell>{s.name}</TableCell>
-              <TableCell>RM{s.price.toFixed(2)}</TableCell>
-              <TableCell>{s.quantity || 0}</TableCell>
-              <TableCell
-                title={formatMotorcycleList(s.motorcycleList)}
-                style={{
-                  maxWidth: 200,
-                  whiteSpace: "nowrap",
-                  textOverflow: "ellipsis",
-                  overflow: "hidden",
-                }}
-              >
-                {formatMotorcycleList(s.motorcycleList)}
-              </TableCell>
-              <TableCell>{s.serviceTypeName || "-"}</TableCell>
-              <TableCell
-                title={s.details}
-                style={{
-                  maxWidth: 320,
-                  whiteSpace: "nowrap",
-                  textOverflow: "ellipsis",
-                  overflow: "hidden",
-                }}
-              >
-                {s.details}
-              </TableCell>
+      <div className={styles.tableWrapper}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Service</TableCell>
+              <TableCell>Price</TableCell>
+              <TableCell>Qty</TableCell>
+              <TableCell>Bike</TableCell>
+              <TableCell>Type</TableCell>
+              <TableCell>Details</TableCell>
               {canManageServices(role) && (
-                <TableCell align="right">
-                  <IconButton size="small" onClick={() => handleEdit(s)}>
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton size="small" onClick={() => handleDelete(s.id)}>
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </TableCell>
+                <TableCell align="right">Actions</TableCell>
               )}
             </TableRow>
-          ))}
-          {filtered.length === 0 && (
-            <TableRow>
-              <TableCell
-                colSpan={canManageServices(role) ? 7 : 6}
-                align="center"
-                sx={{ py: 6, color: "text.secondary" }}
-              >
-                No services match your filters.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+          </TableHead>
+          <TableBody>
+            {filtered.map((s) => (
+              <TableRow key={s.id} hover>
+                <TableCell>{s.name}</TableCell>
+                <TableCell>RM{s.price.toFixed(2)}</TableCell>
+                <TableCell>{s.quantity || 0}</TableCell>
+                <TableCell
+                  title={formatMotorcycleList(s.motorcycleList)}
+                  style={{
+                    maxWidth: 200,
+                    whiteSpace: "nowrap",
+                    textOverflow: "ellipsis",
+                    overflow: "hidden",
+                  }}
+                >
+                  {formatMotorcycleList(s.motorcycleList)}
+                </TableCell>
+                <TableCell>{s.serviceTypeName || "-"}</TableCell>
+                <TableCell
+                  title={s.details}
+                  style={{
+                    maxWidth: 320,
+                    whiteSpace: "nowrap",
+                    textOverflow: "ellipsis",
+                    overflow: "hidden",
+                  }}
+                >
+                  {s.details}
+                </TableCell>
+                {canManageServices(role) && (
+                  <TableCell align="right">
+                    <IconButton size="small" onClick={() => handleEdit(s)}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => handleDelete(s.id)}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                )}
+              </TableRow>
+            ))}
+            {filtered.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={canManageServices(role) ? 7 : 6}
+                  align="center"
+                  sx={{ py: 6, color: "text.secondary" }}
+                >
+                  No services match your filters.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
       <Dialog
         open={open}
@@ -384,7 +390,11 @@ export function Catalog({ role }) {
                   setForm({ ...form, bike: newValue });
                 }}
                 renderInput={(params) => (
-                  <TextField {...params} label="Bike" placeholder="Select bikes" />
+                  <TextField
+                    {...params}
+                    label="Bike"
+                    placeholder="Select bikes"
+                  />
                 )}
                 isOptionEqualToValue={(option, value) => option === value}
               />
@@ -397,7 +407,11 @@ export function Catalog({ role }) {
                   setForm({ ...form, type: newValue || "" });
                 }}
                 renderInput={(params) => (
-                  <TextField {...params} label="Type" placeholder="Select type" />
+                  <TextField
+                    {...params}
+                    label="Type"
+                    placeholder="Select type"
+                  />
                 )}
                 isOptionEqualToValue={(option, value) => option === value}
               />

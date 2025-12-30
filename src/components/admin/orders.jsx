@@ -22,6 +22,7 @@ import {
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import React, { useEffect, useRef, useState } from "react";
+import styles from "./admin.module.scss";
 import { useReactToPrint } from "react-to-print";
 import { LS_KEYS } from "../../enum";
 import { loadLS, saveLS } from "../../utils";
@@ -360,7 +361,11 @@ export function Orders({ role }) {
             Create Order
           </Typography>
           <Stack spacing={2}>
-             <Stack flexDirection={"row"} columnGap={2}>
+            <Stack
+              flexDirection={{ xs: "column", md: "row" }}
+              columnGap={2}
+              rowGap={2}
+            >
             {/* Customer name */}
             <Stack width="100%">
               <TextField
@@ -475,7 +480,9 @@ export function Orders({ role }) {
             sx={{ mb: 2 }}
           />
 
-          <Table size="small">
+          <div className={styles.tableScrollable}>
+            <div className={styles.tableWrapper}>
+              <Table size="small">
             <TableHead>
               <TableRow>
                 <TableCell>Pick</TableCell>
@@ -504,7 +511,9 @@ export function Orders({ role }) {
                   </TableRow>
                 ))}
             </TableBody>
-          </Table>
+              </Table>
+            </div>
+          </div>
           <Box
             display="flex"
             alignItems="center"
@@ -532,7 +541,8 @@ export function Orders({ role }) {
           <Typography variant="h6" gutterBottom>
             Recent Orders
           </Typography>
-          <Table size="large">
+          <div className={styles.tableWrapper}>
+            <Table size="large" className={styles.wideTable}>
             <TableHead>
               <TableRow>
                 <TableCell>Customer</TableCell>
@@ -610,7 +620,8 @@ export function Orders({ role }) {
                 </TableRow>
               )}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </Paper>
       </Grid>
     </Grid>

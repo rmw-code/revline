@@ -1,0 +1,34 @@
+.catalogContainer {
+    overflow: hidden;
+}
+
+.tableWrapper {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+
+.tableWrapper table {
+    min-width: 700px;
+}
+
+@media (max-width: 600px) {
+    .tableWrapper table {
+        min-width: 600px;
+    }
+}
+
+/* Helper for wider tables (e.g., recent orders with many columns) */
+.wideTable {
+    min-width: 1000px;
+}
+
+/* Constrain table height and enable vertical scrolling while preserving horizontal scroll
+     Use this for create-order table to prevent it from growing too tall. */
+.tableScrollable {
+    max-height: 320px; /* adjust as needed */
+    overflow: auto; /* allow both vertical and horizontal scrolling when needed */
+    -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
+}

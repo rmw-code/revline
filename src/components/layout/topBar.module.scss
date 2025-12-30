@@ -2,3 +2,60 @@
     display: flex;
     justify-content: space-between;
 }
+
+/* Actions container (right side) */
+.topBarActions {
+    display: flex;
+    align-items: center;
+}
+
+/* Responsive tweaks for small screens */
+@media (max-width: 600px) {
+    .topBarMain img {
+        height: 36px; /* smaller logo on mobile */
+    }
+
+    /* Show only icons on buttons to save horizontal space */
+    .topBarActions .MuiButton-root {
+        min-width: 40px;
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+
+    /* Hide the visible button label text but keep the icon */
+    .topBarActions .MuiButton-root .MuiButton-startIcon + span,
+    .topBarActions .MuiButton-root .MuiButton-label {
+        display: none;
+    }
+
+    /* Keep the icon visible */
+    .topBarActions .MuiButton-root .MuiButton-startIcon {
+        margin: 0;
+    }
+
+    /* Make Chip compact: keep a small circular outline with no label */
+    .topBarActions .MuiChip-root {
+        min-width: 0;
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+    .topBarActions .MuiChip-root .MuiChip-label {
+        display: none;
+    }
+}
+
+    /* Specific smaller styling for the Customer Display button */
+    .displayButton {
+        min-width: 84px;
+        padding-left: 8px;
+        padding-right: 8px;
+        font-size: 0.775rem;
+    }
+
+    @media (max-width: 600px) {
+        .displayButton {
+            min-width: 40px;
+            padding-left: 4px;
+            padding-right: 4px;
+        }
+    }

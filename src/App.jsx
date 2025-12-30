@@ -69,7 +69,14 @@ function TabsWrapper({ role }) {
   const [tab, setTab] = useState(0);
   return (
     <Box>
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} aria-label="main tabs">
+      <Tabs
+        value={tab}
+        onChange={(_, v) => setTab(v)}
+        aria-label="main tabs"
+        variant="scrollable"
+        scrollButtons="auto"
+        allowScrollButtonsMobile
+      >
         <Tab label="Catalog" />
         <Tab label="Orders" />
         <Tab label="Inventory" />

@@ -16,7 +16,7 @@ export function TopBar({ user, onLogout, onOpenDisplay }) {
         <Stack>
           <img src={RMWLogo} alt="RMW Logo" style={{ height: 50 }} />
         </Stack>
-        <Stack flexDirection={'row'} alignItems={'center'}>
+        <Stack className={styles.topBarActions} flexDirection={'row'} alignItems={'center'}>
           <Chip
             label={user.role}
             variant="outlined"
@@ -25,9 +25,13 @@ export function TopBar({ user, onLogout, onOpenDisplay }) {
           />
           <Button
             startIcon={<MonitorIcon />}
+            size="small"
+            className={styles.displayButton}
             variant="outlined"
             onClick={onOpenDisplay}
             sx={{ mr: 1 }}
+            title="Open customer display"
+            aria-label="Open customer display"
           >
             Customer Display
           </Button>
