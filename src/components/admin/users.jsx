@@ -23,6 +23,7 @@ import {
     Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
+import styles from "./admin.module.scss";
 import { getUsers } from "../../services/userServices";
 import { ROLES } from "../../constants";
 
@@ -105,7 +106,8 @@ export function Users({ role }) {
         </Button>
       </Box>
 
-      <Table size="small">
+      <div className={styles.tableWrapper}>
+        <Table size="small">
         <TableHead>
           <TableRow>
             <TableCell>Name</TableCell>
@@ -135,7 +137,8 @@ export function Users({ role }) {
             </TableRow>
           ))}
         </TableBody>
-      </Table>
+        </Table>
+      </div>
 
       <Dialog
         open={open}

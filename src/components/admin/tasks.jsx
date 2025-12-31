@@ -14,6 +14,7 @@ import {
   Select,
   MenuItem,
 } from "@mui/material";
+import styles from "./admin.module.scss";
 import { useEffect, useState } from "react";
 import { getOrders, updateOrderStatus } from "../../services/orderService";
 import jsPDF from "jspdf";
@@ -136,7 +137,8 @@ export function Tasks({ role }) {
         </Button>
       </Stack>
 
-      <Table size="small">
+      <div className={styles.tableWrapper}>
+        <Table size="small">
         <TableHead>
           <TableRow>
             <TableCell />
@@ -203,7 +205,8 @@ export function Tasks({ role }) {
             </TableRow>
           )}
         </TableBody>
-      </Table>
+        </Table>
+      </div>
     </Paper>
   );
 }

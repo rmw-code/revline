@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   Box,
   Container,
@@ -8,19 +7,22 @@ import {
   Typography,
 } from "@mui/material";
 import { ThemeProvider } from "@mui/material/styles";
-import theme from "./theme";
+import { useEffect, useState } from "react";
 import {
+  Attendance,
   Catalog,
   CustomerDisplay,
+  Leave,
   Login,
   Orders,
   Tasks,
   TopBar,
-  Users,
+  Users
 } from "./components";
 import { LS_KEYS } from "./enum";
 import { DEFAULT_SERVICES, DEFAULT_USERS } from "./local";
 import { useHashRoute } from "./router";
+import theme from "./theme";
 import { loadLS, saveLS } from "./utils";
 
 function Shell() {
@@ -90,6 +92,8 @@ function TabsWrapper({ role }) {
         {tab === 1 && <Orders role={role} />}
         {tab === 2 && <>Coming Soon</>}
         {tab === 3 && <Tasks role={role} />}
+        {tab === 4 && <Leave />}
+        {tab === 5 && <Attendance />}
         {tab === 6 && <Users role={role} />}
       </Box>
     </Box>

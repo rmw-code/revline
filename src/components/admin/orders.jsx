@@ -46,6 +46,7 @@ export function Orders({ role }) {
   const [mechanic, setMechanic] = useState(""); // 🔹 new state
   const [selectedMechanic, setSelectedMechanic] = useState(null); // 🔹 mechanic object
   const [selected, setSelected] = useState([]);
+  const [quantities, setQuantities] = useState({});
   const [printOrder, setPrintOrder] = useState(null);
   const [search, setSearch] = useState(""); // 🔹 search services
   const printRef = useRef(null);
@@ -130,14 +131,21 @@ export function Orders({ role }) {
 
   const total = selected.reduce((sum, id) => {
     const s = services.find((x) => x.id === id);
-    return sum + (s?.price || 0);
+    const qty = quantities[id] || 1;
+    return sum + (s?.price || 0) * qty;
   }, 0);
 
-  const toggleSel = (id) =>
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-
+  // Toggle selection and ensure default quantity assigned when selected
+  const toggleSelectWithQuantity = (id) => {
+    setSelected((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((x) => x !== id);
+      } else {
+        setQuantities((q) => ({ ...(q || {}), [id]: q && q[id] ? q[id] : 1 }));
+        return [...prev, id];
+      }
+    });
+  };
   const createOrder = async () => {
     if (!customer || selected.length === 0) return;
     
@@ -145,12 +153,17 @@ export function Orders({ role }) {
       // Get selected services with their details
       const items = selected.map((id) => services.find((s) => s.id === id));
       
-      // Prepare services array for API
-      const servicesPayload = items.map((item) => ({
-        name: item.name,
-        price: item.price,
-        details: item.details || "",
-      }));
+      // Prepare services array for API (include quantity)
+      const servicesPayload = items.map((item) => {
+        const qty = quantities[item.id] || 1;
+        return {
+          name: item.name,
+          price: item.price,
+          details: item.details || "",
+          quantity: qty,
+          lineTotal: Number((item.price * qty).toFixed(2)),
+        };
+      });
 
       // Prepare order data for API
       const orderData = {
@@ -487,6 +500,7 @@ export function Orders({ role }) {
               <TableRow>
                 <TableCell>Pick</TableCell>
                 <TableCell>Service</TableCell>
+                <TableCell>Qty</TableCell>
                 <TableCell>Details</TableCell>
                 <TableCell>Price</TableCell>
               </TableRow>
@@ -502,10 +516,23 @@ export function Orders({ role }) {
                       <input
                         type="checkbox"
                         checked={selected.includes(s.id)}
-                        onChange={() => toggleSel(s.id)}
+                        onChange={() => toggleSelectWithQuantity(s.id)}
                       />
                     </TableCell>
                     <TableCell>{s.name}</TableCell>
+                    <TableCell>
+                      <TextField
+                        type="number"
+                        size="small"
+                        inputProps={{ min: 1 }}
+                        value={quantities[s.id] ?? 1}
+                        onChange={(e) => {
+                          const v = Math.max(1, Number(e.target.value || 1));
+                          setQuantities((q) => ({ ...(q || {}), [s.id]: v }));
+                        }}
+                        sx={{ width: 90 }}
+                      />
+                    </TableCell>
                     <TableCell>{s.details}</TableCell>
                     <TableCell>RM{s.price.toFixed(2)}</TableCell>
                   </TableRow>

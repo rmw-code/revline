@@ -20,6 +20,23 @@
     }
 }
 
+/* Default padding for table headers and cells to keep visual rhythm */
+.tableWrapper th,
+.tableWrapper td,
+.tableWrapper .MuiTableCell-root {
+    padding: 10px 12px;
+}
+
+@media (max-width: 600px) {
+    /* reduce padding and font-size on small screens */
+    .tableWrapper th,
+    .tableWrapper td,
+    .tableWrapper .MuiTableCell-root {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+    }
+}
+
 /* Helper for wider tables (e.g., recent orders with many columns) */
 .wideTable {
     min-width: 1000px;

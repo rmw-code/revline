@@ -12,6 +12,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
+import styles from "../admin/admin.module.scss";
 import { LS_KEYS } from "../../enum";
 import { loadLS } from "../../utils";
 import QR from "./../../assets/qr.jpg";
@@ -58,7 +59,7 @@ export function CustomerDisplay() {
             No order selected yet.
           </Box>
         ) : (
-          <Stack flexDirection={"row"} gap={2}>
+          <Stack flexDirection={{ xs: "column", md: "row" }} gap={2}>
             <Stack flexGrow={2}>
               <Paper variant="outlined" sx={{ p: 2 }}>
                 <Box
@@ -87,7 +88,8 @@ export function CustomerDisplay() {
                     variant={(order.isPaid || order.paid) ? "filled" : "outlined"}
                   />
                 </Box>
-                <Table size="large">
+                <div className={styles.tableWrapper}>
+                  <Table size="large">
                   <TableHead>
                     <TableRow>
                       <TableCell>Service</TableCell>
@@ -116,7 +118,8 @@ export function CustomerDisplay() {
                       </TableCell>
                     </TableRow>
                   </TableBody>
-                </Table>
+                  </Table>
+                </div>
                 <Box
                   display="flex"
                   justifyContent="space-between"

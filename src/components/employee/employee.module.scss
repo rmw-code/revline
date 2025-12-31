@@ -1,0 +1,36 @@
+/* Employee-specific styles reusing the app's look & feel */
+.leaveContainer {
+  /* Match Paper spacing and keep layout tidy */
+  width: 100%;
+}
+
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.leaveTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.leaveTable thead th {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid #eee;
+  background: #fafafa;
+}
+
+.leaveTable tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f3f3f3;
+}
+
+@media (max-width: 600px) {
+  .leaveTable {
+    min-width: 480px;
+  }
+}
