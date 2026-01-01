@@ -40,3 +40,7 @@ export const getPendingLeaveRequests = async (page = 0, size = 10) => {
     });
     return await request(`/sec/leave-requests/status/PENDING?${queryParams.toString()}`);
 };
+
+export const getLeaveBalances = async () => {
+    return await request(`/sec/leave-balances`);
+};

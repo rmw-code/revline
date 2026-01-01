@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import styles from "./employee.module.scss";
-import { createLeaveRequest, getLeaveRequests } from "../../services/leaveService";
+import { createLeaveRequest, getLeaveRequests, getLeaveBalances } from "../../services/leaveService";
 import { loadLS, saveLS } from "../../utils";
 import { LS_KEYS } from "../../enum";
 
@@ -33,7 +33,7 @@ export function Leave() {
   const [balances, setBalances] = useState({});
   const [user, setUser] = useState(null);
   const [halfDay, setHalfDay] = useState(false);
-  const [halfPart, setHalfPart] = useState("AM");
+  const [halfPart, setHalfPart] = useState("MORNING");
 
   // Fetch leave requests from API
   useEffect(() => {
@@ -54,15 +54,36 @@ export function Leave() {
     fetchLeaveRequests();
   }, []);
 
-  // Load user balances from localStorage
+  // Fetch leave balances from API
   useEffect(() => {
     const s = loadLS(LS_KEYS.SESSION, null);
     setUser(s);
 
-    const allBalances = loadLS(BAL_KEY, {});
-    const key = s ? (s.username || s.email || s.id) : "guest";
-    const userBal = allBalances[key] || { annual: 12, sick: 10, unpaid: 0 };
-    setBalances(userBal);
+    const fetchLeaveBalances = async () => {
+      try {
+        const data = await getLeaveBalances();
+        // Map API response to component state
+        const mappedBalances = {};
+        if (Array.isArray(data)) {
+          data.forEach(balance => {
+            if (balance.leaveTypeCode === 'ANNUAL') {
+              mappedBalances.annual = balance.remainingDays;
+            } else if (balance.leaveTypeCode === 'SICK') {
+              mappedBalances.sick = balance.remainingDays;
+            }
+          });
+          // Set unpaid to 0 as it's unlimited
+          mappedBalances.unpaid = 0;
+          setBalances(mappedBalances);
+        }
+      } catch (error) {
+        console.error("Failed to fetch leave balances", error);
+        // Fallback to default values on error
+        setBalances({ annual: 0, sick: 0, unpaid: 0 });
+      }
+    };
+
+    fetchLeaveBalances();
   }, []);
 
   const submit = async () => {
@@ -98,30 +119,50 @@ export function Leave() {
       }
     }
 
+    // Convert leave type from UI format to API format
+    // ANNUAL_LEAVE -> ANNUAL, SICK_LEAVE -> SICK, UNPAID_LEAVE -> UNPAID
+    const apiLeaveType = type.replace("_LEAVE", "");
+
     const payload = {
-      leaveType: type,
+      leaveType: apiLeaveType,
       startDate,
       endDate,
-      days: diffDays,
+      isHalfDay: halfDay,
       reason,
-      notes,
     };
+
+    // Add halfDayPeriod only for half-day leaves
+    if (halfDay) {
+      payload.halfDayPeriod = halfPart; // "AM" or "PM"
+    }
+
+    // Add notes only if provided
+    if (notes) {
+      payload.notes = notes;
+    }
 
     try {
       const response = await createLeaveRequest(payload);
 
-      // deduct balance for non-unpaid leave
+      // Refresh leave balances from API after successful submission
       if (type !== "UNPAID_LEAVE") {
-        const s = loadLS(LS_KEYS.SESSION, null);
-        const allBalances = loadLS(BAL_KEY, {});
-        const key = s ? (s.username || s.email || s.id) : "guest";
-        const userBal = allBalances[key] || { annual: 12, sick: 10, unpaid: 0 };
-        // Map API leave type to balance key
-        const balanceKey = type === "ANNUAL_LEAVE" ? "annual" : type === "SICK_LEAVE" ? "sick" : "unpaid";
-        userBal[balanceKey] = (userBal[balanceKey] || 0) - diffDays;
-        allBalances[key] = userBal;
-        setBalances(userBal);
-        saveLS(BAL_KEY, allBalances);
+        try {
+          const data = await getLeaveBalances();
+          const mappedBalances = {};
+          if (Array.isArray(data)) {
+            data.forEach(balance => {
+              if (balance.leaveTypeCode === 'ANNUAL') {
+                mappedBalances.annual = balance.remainingDays;
+              } else if (balance.leaveTypeCode === 'SICK') {
+                mappedBalances.sick = balance.remainingDays;
+              }
+            });
+            mappedBalances.unpaid = 0;
+            setBalances(mappedBalances);
+          }
+        } catch (error) {
+          console.error("Failed to refresh leave balances", error);
+        }
       }
 
       // Add the new leave request to the list
@@ -191,7 +232,7 @@ export function Leave() {
       </Box>
 
       <Stack spacing={2}>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="center">
+        <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="flex-start">
           <FormControl fullWidth>
             <InputLabel id="leave-type-label">Leave Type</InputLabel>
             <Select
@@ -318,8 +359,8 @@ export function Leave() {
                 label="When"
                 onChange={(e) => setHalfPart(e.target.value)}
               >
-                <MenuItem value="AM">Morning (AM)</MenuItem>
-                <MenuItem value="PM">Afternoon (PM)</MenuItem>
+                <MenuItem value="MORNING">Morning (AM)</MenuItem>
+                <MenuItem value="AFTERNOON">Afternoon (PM)</MenuItem>
               </Select>
             </FormControl>
           )}

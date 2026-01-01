@@ -28,8 +28,10 @@ export const request = async (endpoint, options = {}) => {
             // Clear the token from localStorage
             saveLS(LS_KEYS.TOKEN, null);
 
-            // Redirect to login page
-            window.location.href = "/login";
+            // Only redirect if not already on login page to prevent infinite loop
+            if (!window.location.pathname.includes('/login')) {
+                window.location.href = "/login";
+            }
 
             // Throw error to prevent further processing
             throw new Error(response.status === 401 ? "Unauthorized - Please login again" : "Forbidden - Access denied");
