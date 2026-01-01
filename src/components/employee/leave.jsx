@@ -12,52 +12,90 @@ import {
   FormControl,
 } from "@mui/material";
 import styles from "./employee.module.scss";
-import { loadLS, saveLS } from "../../utils";
-
-const STORAGE_KEY = "bs_leaves";
+import { createLeaveRequest, getLeaveRequests } from "../../services/leaveService";
 
 export function Leave() {
-  const [type, setType] = useState("annual");
+  const [type, setType] = useState("ANNUAL_LEAVE");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
   const [leaves, setLeaves] = useState([]);
 
+  // Fetch leave requests from API
   useEffect(() => {
-    const existing = loadLS(STORAGE_KEY, []);
-    setLeaves(existing || []);
+    const fetchLeaveRequests = async () => {
+      try {
+        const data = await getLeaveRequests(0, 200);
+        if (data.content) {
+          setLeaves(data.content);
+        } else if (Array.isArray(data)) {
+          setLeaves(data);
+        } else {
+          setLeaves([]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch leave requests", error);
+      }
+    };
+    fetchLeaveRequests();
   }, []);
 
-  const submit = () => {
+  const submit = async () => {
     if (!startDate || !endDate) {
       alert("Please provide both start and end dates for your leave.");
       return;
     }
 
     const payload = {
-      id: Date.now(),
-      type,
+      leaveType: type,
       startDate,
       endDate,
       reason,
       notes,
-      status: "PENDING",
-      createdAt: new Date().toISOString(),
     };
 
-    const next = [payload, ...leaves];
-    setLeaves(next);
-    saveLS(STORAGE_KEY, next);
+    try {
+      const response = await createLeaveRequest(payload);
 
-    // reset form
-    setType("annual");
-    setStartDate("");
-    setEndDate("");
-    setReason("");
-    setNotes("");
+      // Add the new leave request to the list
+      setLeaves([response, ...leaves]);
 
-    alert("Leave request submitted.");
+      // reset form
+      setType("ANNUAL_LEAVE");
+      setStartDate("");
+      setEndDate("");
+      setReason("");
+      setNotes("");
+
+      alert("Leave request submitted successfully.");
+    } catch (error) {
+      console.error("Failed to submit leave request", error);
+      alert("Failed to submit leave request. Please try again.");
+    }
+  };
+
+  const handleStatusChange = async (leaveId, newStatus) => {
+    try {
+      if (newStatus === "APPROVED") {
+        await approveLeaveRequest(leaveId);
+      } else if (newStatus === "REJECTED") {
+        await rejectLeaveRequest(leaveId);
+      }
+
+      // Refresh the leave requests list
+      const data = await getLeaveRequests(0, 200);
+      if (data.content) {
+        setLeaves(data.content);
+      } else if (Array.isArray(data)) {
+        setLeaves(data);
+      }
+
+      alert(`Leave request ${newStatus.toLowerCase()} successfully.`);
+    } catch (error) {
+      console.error(`Failed to ${newStatus.toLowerCase()} leave request`, error);
+      alert(`Failed to ${newStatus.toLowerCase()} leave request. Please try again.`);
+    }
   };
 
   return (
@@ -76,29 +114,106 @@ export function Leave() {
               label="Leave Type"
               onChange={(e) => setType(e.target.value)}
             >
-              <MenuItem value="annual">Annual Leave</MenuItem>
-              <MenuItem value="sick">Sick Leave</MenuItem>
-              <MenuItem value="unpaid">Unpaid Leave</MenuItem>
+              <MenuItem value="ANNUAL_LEAVE">Annual Leave</MenuItem>
+              <MenuItem value="SICK_LEAVE">Sick Leave</MenuItem>
+              <MenuItem value="UNPAID_LEAVE">Unpaid Leave</MenuItem>
             </Select>
           </FormControl>
 
-          <TextField
-            label="Start Date"
-            type="date"
-            fullWidth
-            InputLabelProps={{ shrink: true }}
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
+          <FormControl fullWidth>
+            <InputLabel
+              shrink
+              htmlFor="start-date-input"
+              sx={{
+                backgroundColor: '#fff',
+                paddingX: '4px',
+                marginLeft: '-4px',
+              }}
+            >
+              Start Date *
+            </InputLabel>
+            <Box
+              component="input"
+              id="start-date-input"
+              type="date"
+              required
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              sx={{
+                width: '100%',
+                padding: '16.5px 14px',
+                fontSize: '1rem',
+                fontFamily: 'inherit',
+                border: '1px solid rgba(0, 0, 0, 0.23)',
+                borderRadius: '4px',
+                backgroundColor: '#fff',
+                color: '#000',
+                colorScheme: 'light',
+                '&:hover': {
+                  borderColor: 'rgba(0, 0, 0, 0.87)',
+                },
+                '&:focus': {
+                  outline: 'none',
+                  borderColor: '#1976d2',
+                  borderWidth: '2px',
+                },
+                '&::-webkit-calendar-picker-indicator': {
+                  cursor: 'pointer',
+                },
+              }}
+            />
+            <Typography variant="caption" sx={{ mt: 0.5, ml: 1.75, color: 'text.secondary' }}>
+              Click to open calendar
+            </Typography>
+          </FormControl>
 
-          <TextField
-            label="End Date"
-            type="date"
-            fullWidth
-            InputLabelProps={{ shrink: true }}
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
+          <FormControl fullWidth>
+            <InputLabel
+              shrink
+              htmlFor="end-date-input"
+              sx={{
+                backgroundColor: '#fff',
+                paddingX: '4px',
+                marginLeft: '-4px',
+              }}
+            >
+              End Date *
+            </InputLabel>
+            <Box
+              component="input"
+              id="end-date-input"
+              type="date"
+              required
+              min={startDate || undefined}
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              sx={{
+                width: '100%',
+                padding: '16.5px 14px',
+                fontSize: '1rem',
+                fontFamily: 'inherit',
+                border: '1px solid rgba(0, 0, 0, 0.23)',
+                borderRadius: '4px',
+                backgroundColor: '#fff',
+                color: '#000',
+                colorScheme: 'light',
+                '&:hover': {
+                  borderColor: 'rgba(0, 0, 0, 0.87)',
+                },
+                '&:focus': {
+                  outline: 'none',
+                  borderColor: '#1976d2',
+                  borderWidth: '2px',
+                },
+                '&::-webkit-calendar-picker-indicator': {
+                  cursor: 'pointer',
+                },
+              }}
+            />
+            <Typography variant="caption" sx={{ mt: 0.5, ml: 1.75, color: 'text.secondary' }}>
+              Click to open calendar
+            </Typography>
+          </FormControl>
         </Stack>
 
         <TextField
@@ -153,7 +268,7 @@ export function Leave() {
               )}
               {leaves.map((l) => (
                 <tr key={l.id}>
-                  <td>{(l.type || "-").toUpperCase()}</td>
+                  <td>{(l.leaveType || "-").replace(/_/g, " ")}</td>
                   <td>{l.startDate}</td>
                   <td>{l.endDate}</td>
                   <td style={{ maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.reason}>{l.reason || "-"}</td>
