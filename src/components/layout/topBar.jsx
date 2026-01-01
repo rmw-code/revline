@@ -1,10 +1,24 @@
-import { AppBar, Button, Chip, Stack, Toolbar } from "@mui/material";
+import { AppBar, Button, Chip, Stack, Toolbar, IconButton, Menu, MenuItem, ListItemIcon } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
 import MonitorIcon from "@mui/icons-material/Monitor";
+import MenuIcon from '@mui/icons-material/Menu';
+import AccountCircle from '@mui/icons-material/AccountCircle';
 import RMWLogo from "./../../assets/RMW-transparent.png";
 import styles from "./topBar.module.scss";
+import { useState } from "react";
 
 export function TopBar({ user, onLogout, onOpenDisplay }) {
+  const [menuAnchor, setMenuAnchor] = useState(null);
+
+  const handleMenuOpen = (event) => setMenuAnchor(event.currentTarget);
+  const handleMenuClose = () => setMenuAnchor(null);
+  const handleLogout = () => {
+    handleMenuClose();
+    if (onLogout) onLogout();
+  };
+
+  const username = user?.name || user?.username || user?.email || "User";
+
   return (
     <AppBar
       position="sticky"
@@ -23,6 +37,7 @@ export function TopBar({ user, onLogout, onOpenDisplay }) {
             size="small"
             sx={{ mr: 1 }}
           />
+
           <Button
             startIcon={<MonitorIcon />}
             size="small"
@@ -35,9 +50,42 @@ export function TopBar({ user, onLogout, onOpenDisplay }) {
           >
             Customer Display
           </Button>
-          <Button startIcon={<LogoutIcon />} onClick={onLogout}>
-            Logout
-          </Button>
+
+          {/* Hamburger menu containing username and logout */}
+          <IconButton
+            edge="end"
+            color="inherit"
+            onClick={handleMenuOpen}
+            aria-controls={menuAnchor ? 'topbar-menu' : undefined}
+            aria-haspopup="true"
+            aria-expanded={menuAnchor ? 'true' : undefined}
+            size="large"
+          >
+            <MenuIcon />
+          </IconButton>
+
+          <Menu
+            id="topbar-menu"
+            anchorEl={menuAnchor}
+            open={Boolean(menuAnchor)}
+            onClose={handleMenuClose}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          >
+            <MenuItem disabled>
+              <ListItemIcon>
+                <AccountCircle fontSize="small" />
+              </ListItemIcon>
+              {username}
+            </MenuItem>
+
+            <MenuItem onClick={handleLogout}>
+              <ListItemIcon>
+                <LogoutIcon fontSize="small" />
+              </ListItemIcon>
+              Logout
+            </MenuItem>
+          </Menu>
         </Stack>
       </Toolbar>
     </AppBar>
