@@ -49,3 +49,17 @@
     overflow: auto; /* allow both vertical and horizontal scrolling when needed */
     -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
 }
+
+/* Truncate long text inside table cells with an ellipsis */
+.ellipsis {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+    .ellipsis {
+        max-width: 120px;
+    }
+}

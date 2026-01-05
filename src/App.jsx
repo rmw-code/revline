@@ -14,6 +14,7 @@ import {
   CustomerDisplay,
   Leave,
   Login,
+  EmployeeAdmin,
   Orders,
   Tasks,
   TopBar,
@@ -85,6 +86,7 @@ function TabsWrapper({ role }) {
         <Tab label="Tasks" />
         <Tab label="Leave" />
         <Tab label="Attendance" />
+        <Tab label="Employees" />
         <Tab label="Users" />
       </Tabs>
       <Box sx={{ mt: 2 }}>
@@ -94,7 +96,8 @@ function TabsWrapper({ role }) {
         {tab === 3 && <Tasks role={role} />}
         {tab === 4 && <Leave />}
         {tab === 5 && <Attendance />}
-        {tab === 6 && <Users role={role} />}
+        {tab === 6 && <EmployeeAdmin role={role} />}
+        {tab === 7 && <Users role={role} />}
       </Box>
     </Box>
   );

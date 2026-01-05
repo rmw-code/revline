@@ -29,7 +29,12 @@ import { loadLS, saveLS } from "../../utils";
 import { getServices } from "../../services/serviceService";
 import { getMotorcycles } from "../../services/motorcycleService";
 import { getUsersByRole } from "../../services/userServices";
-import { createOrder as createOrderAPI, getOrders, getOrderById, markOrderAsPaid } from "../../services/orderService";
+import {
+  createOrder as createOrderAPI,
+  getOrders,
+  getOrderById,
+  markOrderAsPaid,
+} from "../../services/orderService";
 import RevlineLogo from "./../../assets/revline_bg_cropped.png";
 
 export function Orders({ role }) {
@@ -148,12 +153,9 @@ export function Orders({ role }) {
   };
   const createOrder = async () => {
     if (!customer || selected.length === 0) return;
-    
+
     try {
-      // Get selected services with their details
       const items = selected.map((id) => services.find((s) => s.id === id));
-      
-      // Prepare services array for API (include quantity)
       const servicesPayload = items.map((item) => {
         const qty = quantities[item.id] || 1;
         return {
@@ -165,7 +167,6 @@ export function Orders({ role }) {
         };
       });
 
-      // Prepare order data for API
       const orderData = {
         customerName: customer,
         phoneNumber: phoneNo,
@@ -185,14 +186,14 @@ export function Orders({ role }) {
 
       // Fetch the full order details to get complete data including invoice number
       const fullOrderDetails = await getOrderById(createdOrder.id);
-      
+
       // Add to local orders list for immediate display in table
       const next = [fullOrderDetails, ...orders];
       setOrders(next);
-      
+
       // Save full order details to localStorage for customer display
       saveLS(LS_KEYS.DISPLAY_ORDER, fullOrderDetails);
-      
+
       // Reset form
       setCustomer("");
       setPhoneNo("");
@@ -213,7 +214,7 @@ export function Orders({ role }) {
     try {
       // Fetch complete order details from API
       const fullOrder = await getOrderById(order.id);
-      
+
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
@@ -236,13 +237,28 @@ export function Orders({ role }) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.text(`Invoice No: ${fullOrder.invoiceNo || fullOrder.id}`, 14, 30);
-      doc.text(`Customer: ${fullOrder.customerName || fullOrder.customer}`, 14, 35);
+      doc.text(
+        `Customer: ${fullOrder.customerName || fullOrder.customer}`,
+        14,
+        35
+      );
       doc.text(`Bike: ${fullOrder.motorcycleName || fullOrder.bike}`, 14, 40);
-      doc.text(`Mechanic: ${fullOrder.mechanicName || fullOrder.mechanic}`, 14, 45);
-      doc.text(`Date: ${new Date(fullOrder.createAt || fullOrder.createdAt).toLocaleString()}`, 14, 50);
-      
+      doc.text(
+        `Mechanic: ${fullOrder.mechanicName || fullOrder.mechanic}`,
+        14,
+        45
+      );
+      doc.text(
+        `Date: ${new Date(
+          fullOrder.createAt || fullOrder.createdAt
+        ).toLocaleString()}`,
+        14,
+        50
+      );
+
       // Payment status
-      const paymentStatus = (fullOrder.isPaid || fullOrder.paid) ? "Paid" : "Unpaid";
+      const paymentStatus =
+        fullOrder.isPaid || fullOrder.paid ? "Paid" : "Unpaid";
       doc.setFont("helvetica", "bold");
       doc.text(`Status: ${paymentStatus}`, 14, 55);
       doc.setFont("helvetica", "normal");
@@ -270,12 +286,14 @@ export function Orders({ role }) {
         addressY += 5;
       });
 
-      // Ensure table starts AFTER logo + address
       const tableStartY = Math.max(addressY + 10, 70);
 
-      // Table - handle both 'services' (API) and 'items' (local) arrays
       const serviceItems = fullOrder.services || fullOrder.items || [];
-      const rows = serviceItems.map((i) => [i.name, i.details || "-", `RM${i.price.toFixed(2)}`]);
+      const rows = serviceItems.map((i) => [
+        i.name,
+        i.details || "-",
+        `RM${i.price.toFixed(2)}`,
+      ]);
 
       autoTable(doc, {
         head: [["Service & Product", "Details", "Price"]],
@@ -289,7 +307,9 @@ export function Orders({ role }) {
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
       doc.text(
-        `Total: RM${(fullOrder.totalCharge || fullOrder.total || 0).toFixed(2)}`,
+        `Total: RM${(fullOrder.totalCharge || fullOrder.total || 0).toFixed(
+          2
+        )}`,
         14,
         doc.lastAutoTable.finalY + 12
       );
@@ -324,30 +344,28 @@ export function Orders({ role }) {
     try {
       // Call API to mark order as paid
       await markOrderAsPaid(id);
-      
+
       // Fetch the updated order details from API to get complete data
       const updatedOrder = await getOrderById(id);
-      
+
       // Update local state with the complete order data
-      setOrders((prev) =>
-        prev.map((o) => (o.id === id ? updatedOrder : o))
-      );
-      
+      setOrders((prev) => prev.map((o) => (o.id === id ? updatedOrder : o)));
+
       console.log(`Order ${id} marked as paid`);
     } catch (error) {
       console.error("Failed to mark order as paid:", error);
       alert("Failed to mark order as paid. Please try again.");
     }
   };
-  
+
   const setDisplay = async (id) => {
     try {
       // Fetch full order details from API
       const orderDetails = await getOrderById(id);
-      
+
       // Store full order details in localStorage for display
       saveLS(LS_KEYS.DISPLAY_ORDER, orderDetails);
-      
+
       console.log("Order details saved for display:", orderDetails);
     } catch (error) {
       console.error("Failed to fetch order details:", error);
@@ -379,106 +397,102 @@ export function Orders({ role }) {
               columnGap={2}
               rowGap={2}
             >
-            {/* Customer name */}
-            <Stack width="100%">
-              <TextField
-                label="Customer Name"
-                fullWidth
-                value={customer}
-                onChange={(e) => setCustomer(e.target.value)}
-              />
-            </Stack>
-            <Stack width="100%">
-              <TextField
-                label="Phone Number"
-                fullWidth
-                value={phoneNo}
-                onChange={(e) => setPhoneNo(e.target.value)}
-              />
-            </Stack>
-            <Stack width="100%">
-              <TextField
-                label="Plate Number"
-                fullWidth
-                value={platNo}
-                onChange={(e) => setPlatNo(e.target.value)}
-              />
-            </Stack>
-            <Stack width="100%">
-              <TextField
-                label="Mileage"
-                fullWidth
-                value={mileage}
-                onChange={(e) => setMileage(e.target.value)}
-              />
-            </Stack>
-            <Stack width="100%">
-              <Autocomplete
-                freeSolo
-                options={motorcycles}
-                getOptionLabel={(option) => 
-                  typeof option === 'string' ? option : `${option.brand} ${option.model}`
-                }
-                value={bike}
-                onChange={(event, newValue) => {
-                  if (typeof newValue === 'string') {
-                    setBike(newValue);
-                    setSelectedMotorcycle(null);
-                  } else if (newValue) {
-                    setBike(`${newValue.brand} ${newValue.model}`);
-                    setSelectedMotorcycle(newValue);
-                  } else {
-                    setBike("");
-                    setSelectedMotorcycle(null);
+              {/* Customer name */}
+              <Stack width="100%">
+                <TextField
+                  label="Customer Name"
+                  fullWidth
+                  value={customer}
+                  onChange={(e) => setCustomer(e.target.value)}
+                />
+              </Stack>
+              <Stack width="100%">
+                <TextField
+                  label="Phone Number"
+                  fullWidth
+                  value={phoneNo}
+                  onChange={(e) => setPhoneNo(e.target.value)}
+                />
+              </Stack>
+              <Stack width="100%">
+                <TextField
+                  label="Plate Number"
+                  fullWidth
+                  value={platNo}
+                  onChange={(e) => setPlatNo(e.target.value)}
+                />
+              </Stack>
+              <Stack width="100%">
+                <TextField
+                  label="Mileage"
+                  fullWidth
+                  value={mileage}
+                  onChange={(e) => setMileage(e.target.value)}
+                />
+              </Stack>
+              <Stack width="100%">
+                <Autocomplete
+                  freeSolo
+                  options={motorcycles}
+                  getOptionLabel={(option) =>
+                    typeof option === "string"
+                      ? option
+                      : `${option.brand} ${option.model}`
                   }
-                }}
-                onInputChange={(event, newInputValue) => {
-                  setBike(newInputValue);
-                  if (!newInputValue) setSelectedMotorcycle(null);
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Bike"
-                    fullWidth
-                  />
-                )}
-              />
-            </Stack>
-            <Stack width="100%">
-              <Autocomplete
-                freeSolo
-                options={mechanics}
-                getOptionLabel={(option) => 
-                  typeof option === 'string' ? option : (option.name || option.email)
-                }
-                value={mechanic}
-                onChange={(event, newValue) => {
-                  if (typeof newValue === 'string') {
-                    setMechanic(newValue);
-                    setSelectedMechanic(null);
-                  } else if (newValue) {
-                    setMechanic(newValue.name || newValue.email);
-                    setSelectedMechanic(newValue);
-                  } else {
-                    setMechanic("");
-                    setSelectedMechanic(null);
+                  value={bike}
+                  onChange={(event, newValue) => {
+                    if (typeof newValue === "string") {
+                      setBike(newValue);
+                      setSelectedMotorcycle(null);
+                    } else if (newValue) {
+                      setBike(`${newValue.brand} ${newValue.model}`);
+                      setSelectedMotorcycle(newValue);
+                    } else {
+                      setBike("");
+                      setSelectedMotorcycle(null);
+                    }
+                  }}
+                  onInputChange={(event, newInputValue) => {
+                    setBike(newInputValue);
+                    if (!newInputValue) setSelectedMotorcycle(null);
+                  }}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Bike" fullWidth />
+                  )}
+                />
+              </Stack>
+              <Stack width="100%">
+                <Autocomplete
+                  freeSolo
+                  options={mechanics}
+                  getOptionLabel={(option) =>
+                    typeof option === "string"
+                      ? option
+                      : option.name || option.email
                   }
-                }}
-                onInputChange={(event, newInputValue) => {
-                  setMechanic(newInputValue);
-                  if (!newInputValue) setSelectedMechanic(null);
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Mechanic"
-                    fullWidth
-                  />
-                )}
-              />
+                  value={mechanic}
+                  onChange={(event, newValue) => {
+                    if (typeof newValue === "string") {
+                      setMechanic(newValue);
+                      setSelectedMechanic(null);
+                    } else if (newValue) {
+                      setMechanic(newValue.name || newValue.email);
+                      setSelectedMechanic(newValue);
+                    } else {
+                      setMechanic("");
+                      setSelectedMechanic(null);
+                    }
+                  }}
+                  onInputChange={(event, newInputValue) => {
+                    setMechanic(newInputValue);
+                    if (!newInputValue) setSelectedMechanic(null);
+                  }}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Mechanic" fullWidth />
+                  )}
+                />
+              </Stack>
             </Stack>
-           </Stack>
           </Stack>
 
           <Divider sx={{ my: 2 }} />
@@ -496,48 +510,67 @@ export function Orders({ role }) {
           <div className={styles.tableScrollable}>
             <div className={styles.tableWrapper}>
               <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Pick</TableCell>
-                <TableCell>Service</TableCell>
-                <TableCell>Qty</TableCell>
-                <TableCell>Details</TableCell>
-                <TableCell>Price</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {services
-                .filter((s) =>
-                  s.name.toLowerCase().includes(search.toLowerCase())
-                )
-                .map((s) => (
-                  <TableRow key={s.id} hover>
-                    <TableCell>
-                      <input
-                        type="checkbox"
-                        checked={selected.includes(s.id)}
-                        onChange={() => toggleSelectWithQuantity(s.id)}
-                      />
-                    </TableCell>
-                    <TableCell>{s.name}</TableCell>
-                    <TableCell>
-                      <TextField
-                        type="number"
-                        size="small"
-                        inputProps={{ min: 1 }}
-                        value={quantities[s.id] ?? 1}
-                        onChange={(e) => {
-                          const v = Math.max(1, Number(e.target.value || 1));
-                          setQuantities((q) => ({ ...(q || {}), [s.id]: v }));
-                        }}
-                        sx={{ width: 90 }}
-                      />
-                    </TableCell>
-                    <TableCell>{s.details}</TableCell>
-                    <TableCell>RM{s.price.toFixed(2)}</TableCell>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Pick</TableCell>
+                    <TableCell>Service</TableCell>
+                    <TableCell>Qty</TableCell>
+                    <TableCell>Bike</TableCell>
+                    <TableCell>Details</TableCell>
+                    <TableCell>Price</TableCell>
                   </TableRow>
-                ))}
-            </TableBody>
+                </TableHead>
+                <TableBody>
+                  {services
+                    .filter((s) =>
+                      s.name.toLowerCase().includes(search.toLowerCase())
+                    )
+                    .map((s) => (
+                      <TableRow key={s.id} hover>
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            checked={selected.includes(s.id)}
+                            onChange={() => toggleSelectWithQuantity(s.id)}
+                          />
+                        </TableCell>
+                        <TableCell>{s.name}</TableCell>
+                        <TableCell>
+                          <TextField
+                            type="number"
+                            size="small"
+                            inputProps={{ min: 1 }}
+                            value={quantities[s.id] ?? 1}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw === "") {
+                                setQuantities((q) => ({
+                                  ...(q || {}),
+                                  [s.id]: "",
+                                }));
+                                return;
+                              }
+                              const parsed = parseInt(raw, 10);
+                              if (Number.isNaN(parsed)) return; // ignore invalid
+                              const v = Math.max(1, parsed);
+                              setQuantities((q) => ({
+                                ...(q || {}),
+                                [s.id]: v,
+                              }));
+                            }}
+                            sx={{ width: 90 }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {s.motorcycleList.map((m) => {
+                            return m.brand + " " + m.model + ", ";
+                          })}
+                        </TableCell>
+                        <TableCell>{s.details ? s.details : "-"}</TableCell>
+                        <TableCell>RM{s.price.toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
               </Table>
             </div>
           </div>
@@ -570,83 +603,96 @@ export function Orders({ role }) {
           </Typography>
           <div className={styles.tableWrapper}>
             <Table size="large" className={styles.wideTable}>
-            <TableHead>
-              <TableRow>
-                <TableCell>Customer</TableCell>
-                <TableCell>Phone No</TableCell>
-                <TableCell>Plat No</TableCell>
-                <TableCell>Mileage</TableCell>
-                <TableCell>Bike</TableCell>
-                <TableCell>Mechanic</TableCell>
-                <TableCell>Total</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Paid</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {orders.map((o) => (
-                <TableRow key={o.id} hover>
-                  <TableCell>{o.customerName || o.customer}</TableCell>
-                  <TableCell>{o.phoneNumber || "-"}</TableCell>
-                  <TableCell>{o.plateNumber || "-"}</TableCell>
-                  <TableCell>{o.mileage || "-"}</TableCell>
-                  <TableCell>{o.motorcycleName || o.bike}</TableCell>
-                  <TableCell>{o.mechanicName || o.mechanic}</TableCell>
-                  <TableCell>RM{(o.totalCharge || o.total || 0).toFixed(2)}</TableCell>
-                  <TableCell>
-                    <Chip label={o.status?.toUpperCase() || "PENDING"} size="small" />
-                  </TableCell>
-                  <TableCell>
-                    {(o.isPaid || o.paid) ? (
-                      <Chip label="Paid" color="success" size="small" />
-                    ) : (
-                      <Chip label="Unpaid" variant="outlined" size="small" />
-                    )}
-                  </TableCell>
-                  <TableCell align="right">
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      startIcon={<VisibilityIcon />}
-                      onClick={() => setDisplay(o.id)}
-                      sx={{ mr: 1 }}
-                    >
-                      Display
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => downloadPDF(o)}
-                      sx={{ mr: 1 }}
-                    >
-                      PDF
-                    </Button>
-                    {!o.isPaid && !o.paid && (
-                      <Button
-                        size="small"
-                        variant="contained"
-                        startIcon={<CheckCircleIcon />}
-                        onClick={() => markPaid(o.id)}
-                      >
-                        Mark Paid
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {orders.length === 0 && (
+              <TableHead>
                 <TableRow>
-                  <TableCell
-                    colSpan={10}
-                    align="center"
-                    sx={{ py: 6, color: "text.secondary" }}
-                  >
-                    No orders yet.
-                  </TableCell>
+                  <TableCell>Customer</TableCell>
+                  <TableCell>Phone No</TableCell>
+                  <TableCell>Plat No</TableCell>
+                  <TableCell>Mileage</TableCell>
+                  <TableCell>Bike</TableCell>
+                  <TableCell>Mechanic</TableCell>
+                  <TableCell>Total</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Paid</TableCell>
+                  <TableCell align="right">Actions</TableCell>
                 </TableRow>
-              )}
-            </TableBody>
+              </TableHead>
+              <TableBody>
+                {orders.map((o) => (
+                  <TableRow key={o.id} hover>
+                    <TableCell>{o.customerName || o.customer}</TableCell>
+                    <TableCell>{o.phoneNumber || "-"}</TableCell>
+                    <TableCell>{o.plateNumber || "-"}</TableCell>
+                    <TableCell>{o.mileage || "-"}</TableCell>
+                    <TableCell>{o.motorcycleName || o.bike}</TableCell>
+                    <TableCell>{o.mechanicName || o.mechanic}</TableCell>
+                    <TableCell>
+                      RM{(o.totalCharge || o.total || 0).toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={o.status?.toUpperCase() || "PENDING"}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {o.isPaid || o.paid ? (
+                        <Chip label="Paid" color="success" size="small" />
+                      ) : (
+                        <Chip label="Unpaid" variant="outlined" size="small" />
+                      )}
+                    </TableCell>
+                    <TableCell align="right">
+                      <Box
+                        sx={{
+                          display: "flex",
+                          gap: 1,
+                          justifyContent: "flex-end",
+                          alignItems: "center",
+                          flexWrap: "nowrap",
+                        }}
+                      >
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<VisibilityIcon />}
+                          onClick={() => setDisplay(o.id)}
+                        >
+                          Display
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => downloadPDF(o)}
+                        >
+                          PDF
+                        </Button>
+                        {!o.isPaid && !o.paid && (
+                          <Button
+                            size="small"
+                            variant="contained"
+                            startIcon={<CheckCircleIcon />}
+                            onClick={() => markPaid(o.id)}
+                          >
+                            Paid
+                          </Button>
+                        )}
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {orders.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={10}
+                      align="center"
+                      sx={{ py: 6, color: "text.secondary" }}
+                    >
+                      No orders yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
             </Table>
           </div>
         </Paper>
