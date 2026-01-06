@@ -16,9 +16,10 @@ import {
   Login,
   EmployeeAdmin,
   Orders,
+  Earning,
   Tasks,
   TopBar,
-  Users
+  Users,
 } from "./components";
 import { LS_KEYS } from "./enum";
 import { DEFAULT_SERVICES, DEFAULT_USERS } from "./local";
@@ -64,9 +65,7 @@ function Shell() {
   );
 }
 
-const comingSoon = () => {
-
-}
+const comingSoon = () => {};
 
 function TabsWrapper({ role }) {
   const [tab, setTab] = useState(0);
@@ -82,9 +81,10 @@ function TabsWrapper({ role }) {
       >
         <Tab label="Catalog" />
         <Tab label="Orders" />
-        <Tab label="Inventory" />
+        <Tab label="Inventory" disabled />
         <Tab label="Tasks" />
         <Tab label="Leave" />
+        <Tab label="My Earning" />
         <Tab label="Attendance" />
         <Tab label="Employees" />
         <Tab label="Users" />
@@ -95,9 +95,10 @@ function TabsWrapper({ role }) {
         {tab === 2 && <>Coming Soon</>}
         {tab === 3 && <Tasks role={role} />}
         {tab === 4 && <Leave />}
-        {tab === 5 && <Attendance />}
-        {tab === 6 && <EmployeeAdmin role={role} />}
-        {tab === 7 && <Users role={role} />}
+        {tab === 5 && <Earning />}
+        {tab === 6 && <Attendance />}
+        {tab === 7 && <EmployeeAdmin role={role} />}
+        {tab === 8 && <Users role={role} />}
       </Box>
     </Box>
   );

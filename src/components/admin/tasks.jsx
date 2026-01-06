@@ -127,7 +127,7 @@ export function Tasks({ role }) {
         alignItems="center"
         mb={2}
       >
-        <Typography variant="h6">Mechanic Jobs</Typography>
+        <Typography variant="h6">Task List</Typography>
         <Button
           variant="contained"
           onClick={exportPDF}
@@ -143,7 +143,7 @@ export function Tasks({ role }) {
           <TableRow>
             <TableCell />
             <TableCell>Customer</TableCell>
-            <TableCell>Mechanic</TableCell>
+            <TableCell>Person In Charge</TableCell>
             <TableCell>Checklist</TableCell>
             <TableCell>Status</TableCell>
             <TableCell align="right">Advance</TableCell>

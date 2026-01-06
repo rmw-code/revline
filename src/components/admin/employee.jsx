@@ -15,7 +15,7 @@ export function EmployeeAdmin({ role }) {
   const [salaries, setSalaries] = useState({}); // map userId => salary record
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ baseSalary: "", deductions: [], published: false, contact: { address: '', phone: '', nextOfKin: '' }, leaveBalances: { annual: 0, sick: 0, unpaid: 0 } });
+  const [form, setForm] = useState({ baseSalary: "", deductions: [], published: false, contact: { address: '', phone: '', emergencyContactName: '', emergencyContactNo: '', bankName: '', bankAccountNumber: '' }, leaveBalances: { annual: 0, sick: 0, unpaid: 0 }, epfContribution: 11, eisContribution: 0 });
 
   useEffect(() => {
     const fetch = async () => {
@@ -33,7 +33,7 @@ export function EmployeeAdmin({ role }) {
   }, []);
 
   const openFor = (user) => {
-  const s = salaries[user.id] || { baseSalary: "", deductions: [], published: false, contact: { address: '', phone: '', nextOfKin: '' }, leaveBalances: { annual: 0, sick: 0, unpaid: 0 } };
+  const s = salaries[user.id] || { baseSalary: "", deductions: [], published: false, contact: { address: '', phone: '', emergencyContactName: '', emergencyContactNo: '', bankName: '', bankAccountNumber: '' }, leaveBalances: { annual: 0, sick: 0, unpaid: 0 }, epfContribution: 11, eisContribution: 0 };
     // normalize deductions to array of { title, amount }
     let ded = [];
     if (Array.isArray(s.deductions)) {
@@ -45,7 +45,7 @@ export function EmployeeAdmin({ role }) {
       ded = [{ title: "Other", amount: s.deductions }];
     }
     setEditing(user);
-    setForm({ baseSalary: s.baseSalary ?? "", deductions: ded, published: !!s.published, contact: s.contact || { address: '', phone: '', nextOfKin: '' }, leaveBalances: s.leaveBalances || { annual: 0, sick: 0, unpaid: 0 } });
+  setForm({ baseSalary: s.baseSalary ?? "", deductions: ded, published: !!s.published, contact: s.contact || { address: '', phone: '', emergencyContactName: '', emergencyContactNo: '', bankName: '', bankAccountNumber: '' }, leaveBalances: s.leaveBalances || { annual: 0, sick: 0, unpaid: 0 }, epfContribution: s.epfContribution ?? 11, eisContribution: s.eisContribution ?? 0 });
     setOpen(true);
   };
 
@@ -56,8 +56,10 @@ export function EmployeeAdmin({ role }) {
       baseSalary: Number(form.baseSalary) || 0,
       deductions: (form.deductions || []).map(d => ({ title: d.title || "", amount: Number(d.amount) || 0 })),
       published: !!form.published,
-      contact: form.contact || { address: '', phone: '', nextOfKin: '' },
+      contact: form.contact || { address: '', phone: '', emergencyContactName: '', emergencyContactNo: '', bankName: '', bankAccountNumber: '' },
       leaveBalances: form.leaveBalances || { annual: 0, sick: 0, unpaid: 0 },
+      epfContribution: Number(form.epfContribution) || 0,
+      eisContribution: Number(form.eisContribution) || 0,
       updatedAt: new Date().toISOString(),
     };
     const next = { ...salaries, [editing.id]: record };
@@ -68,7 +70,7 @@ export function EmployeeAdmin({ role }) {
   };
 
   const togglePublish = (user) => {
-    const current = salaries[user.id] || { baseSalary: 0, deductions: 0, published: false, contact: { address: '', phone: '', nextOfKin: '' }, leaveBalances: { annual: 0, sick: 0, unpaid: 0 } };
+  const current = salaries[user.id] || { baseSalary: 0, deductions: 0, published: false, contact: { address: '', phone: '', emergencyContactName: '', emergencyContactNo: '', bankName: '', bankAccountNumber: '' }, leaveBalances: { annual: 0, sick: 0, unpaid: 0 }, epfContribution: 11, eisContribution: 0 };
     const nextRecord = { ...current, published: !current.published, updatedAt: new Date().toISOString() };
     const next = { ...salaries, [user.id]: nextRecord };
     setSalaries(next);
@@ -104,7 +106,12 @@ export function EmployeeAdmin({ role }) {
               <TableCell>Unpaid</TableCell>
               <TableCell>Address</TableCell>
               <TableCell>Phone</TableCell>
-              <TableCell>Next of Kin</TableCell>
+              <TableCell>Emergency Contact</TableCell>
+              <TableCell>Emergency Contact No</TableCell>
+              <TableCell>Bank Name</TableCell>
+              <TableCell>Bank Account</TableCell>
+              <TableCell>EPF</TableCell>
+              <TableCell>EIS</TableCell>
               <TableCell>Published</TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
@@ -129,7 +136,12 @@ export function EmployeeAdmin({ role }) {
                     <TableCell>{s && s.leaveBalances ? (Number(s.leaveBalances.unpaid) || 0) : 0}</TableCell>
                     <TableCell className={styles.ellipsis}>{s && s.contact ? s.contact.address || '—' : '—'}</TableCell>
                     <TableCell className={styles.ellipsis}>{s && s.contact ? s.contact.phone || '—' : '—'}</TableCell>
-                    <TableCell className={styles.ellipsis}>{s && s.contact ? s.contact.nextOfKin || '—' : '—'}</TableCell>
+                    <TableCell className={styles.ellipsis}>{s && s.contact ? s.contact.emergencyContactName || '—' : '—'}</TableCell>
+                    <TableCell className={styles.ellipsis}>{s && s.contact ? s.contact.emergencyContactNo || '—' : '—'}</TableCell>
+                    <TableCell className={styles.ellipsis}>{s && s.contact ? s.contact.bankName || '—' : '—'}</TableCell>
+                    <TableCell className={styles.ellipsis}>{s && s.contact ? s.contact.bankAccountNumber || '—' : '—'}</TableCell>
+                    <TableCell>{s ? (Number(s.epfContribution) || 0) : 0}</TableCell>
+                    <TableCell>{s ? (Number(s.eisContribution) || 0) : 0}</TableCell>
                   <TableCell>
                     <Switch size="small" checked={!!(s && s.published)} onChange={() => togglePublish(u)} />
                   </TableCell>
@@ -171,11 +183,47 @@ export function EmployeeAdmin({ role }) {
               fullWidth
             />
             <TextField
-              label="Next of Kin"
-              value={form.contact?.nextOfKin || ''}
-              onChange={(e) => setForm({ ...form, contact: { ...(form.contact || {}), nextOfKin: e.target.value } })}
+              label="Emergency Contact Name"
+              value={form.contact?.emergencyContactName || ''}
+              onChange={(e) => setForm({ ...form, contact: { ...(form.contact || {}), emergencyContactName: e.target.value } })}
               fullWidth
             />
+            <TextField
+              label="Emergency Contact No"
+              value={form.contact?.emergencyContactNo || ''}
+              onChange={(e) => setForm({ ...form, contact: { ...(form.contact || {}), emergencyContactNo: e.target.value } })}
+              fullWidth
+            />
+            <TextField
+              label="Bank Name"
+              value={form.contact?.bankName || ''}
+              onChange={(e) => setForm({ ...form, contact: { ...(form.contact || {}), bankName: e.target.value } })}
+              fullWidth
+            />
+            <TextField
+              label="Bank Account Number"
+              value={form.contact?.bankAccountNumber || ''}
+              onChange={(e) => setForm({ ...form, contact: { ...(form.contact || {}), bankAccountNumber: e.target.value } })}
+              fullWidth
+            />
+
+            <Typography variant="subtitle2">Contributions</Typography>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+              <TextField
+                label="EPF Contribution"
+                type="number"
+                value={form.epfContribution ?? 0}
+                onChange={(e) => setForm({ ...form, epfContribution: Number(e.target.value) })}
+                sx={{ width: 160 }}
+              />
+              <TextField
+                label="EIS Contribution"
+                type="number"
+                value={form.eisContribution ?? 0}
+                onChange={(e) => setForm({ ...form, eisContribution: Number(e.target.value) })}
+                sx={{ width: 160 }}
+              />
+            </Stack>
 
             <Typography variant="subtitle2">Deductions</Typography>
             {(form.deductions || []).map((d, idx) => (

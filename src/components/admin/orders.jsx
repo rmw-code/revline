@@ -41,13 +41,13 @@ export function Orders({ role }) {
   const [services, setServices] = useState([]);
   const [motorcycles, setMotorcycles] = useState([]);
   const [mechanics, setMechanics] = useState([]);
-  const [orders, setOrders] = useState([]); // No longer using localStorage
+  const [orders, setOrders] = useState([]); 
   const [customer, setCustomer] = useState("");
-  const [phoneNo, setPhoneNo] = useState(""); // 🔹 new state
-  const [platNo, setPlatNo] = useState(""); // 🔹 new state
-  const [mileage, setMileage] = useState(""); // 🔹 new state
-  const [bike, setBike] = useState(""); // 🔹 new state
-  const [selectedMotorcycle, setSelectedMotorcycle] = useState(null); // 🔹 motorcycle object
+  const [phoneNo, setPhoneNo] = useState("");
+  const [platNo, setPlatNo] = useState(""); 
+  const [mileage, setMileage] = useState(""); 
+  const [bike, setBike] = useState(""); 
+  const [selectedMotorcycle, setSelectedMotorcycle] = useState(null);
   const [mechanic, setMechanic] = useState(""); // 🔹 new state
   const [selectedMechanic, setSelectedMechanic] = useState(null); // 🔹 mechanic object
   const [selected, setSelected] = useState([]);
@@ -514,7 +514,7 @@ export function Orders({ role }) {
                   <TableRow>
                     <TableCell>Pick</TableCell>
                     <TableCell>Service</TableCell>
-                    <TableCell>Qty</TableCell>
+                    <TableCell>Quantity</TableCell>
                     <TableCell>Bike</TableCell>
                     <TableCell>Details</TableCell>
                     <TableCell>Price</TableCell>
@@ -610,7 +610,7 @@ export function Orders({ role }) {
                   <TableCell>Plat No</TableCell>
                   <TableCell>Mileage</TableCell>
                   <TableCell>Bike</TableCell>
-                  <TableCell>Mechanic</TableCell>
+                  <TableCell>Person In Charge</TableCell>
                   <TableCell>Total</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Paid</TableCell>

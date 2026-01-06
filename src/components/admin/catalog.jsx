@@ -265,10 +265,16 @@ export function Catalog({ role }) {
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid xs={12} md={12}>
           <TextField
-            fullWidth
             label="Search by services | bike | type | details"
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            variant="outlined"
+            sx={{
+              width: { xs: '100%', md: '100%' },
+              // minWidth: { md: '50%' },
+              '& .MuiInputBase-input': { fontSize: '1rem', padding: '12px 14px' },
+              '& .MuiInputLabel-root': { fontSize: '0.95rem' },
+            }}
           />
         </Grid>
       </Grid>
@@ -307,7 +313,7 @@ export function Catalog({ role }) {
                 </TableCell>
                 <TableCell>{s.serviceTypeName || "-"}</TableCell>
                 <TableCell
-                  title={s.details}
+                  title={s.details || '-'}
                   style={{
                     maxWidth: 320,
                     whiteSpace: "nowrap",
@@ -315,7 +321,7 @@ export function Catalog({ role }) {
                     overflow: "hidden",
                   }}
                 >
-                  {s.details}
+                  {s.details && s.details.trim() ? s.details : '-'}
                 </TableCell>
                 {canManageServices(role) && (
                   <TableCell align="right">
