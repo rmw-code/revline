@@ -42,7 +42,14 @@ export const request = async (endpoint, options = {}) => {
             throw new Error(errorData.message || "Request failed");
         }
 
-        return await response.json();
+        // Check if response has content before parsing JSON
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+            return await response.json();
+        }
+        
+        // Return empty object for responses with no content
+        return {};
     } catch (error) {
         console.error("API Request Error:", error);
         throw error;
