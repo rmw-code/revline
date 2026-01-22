@@ -6,6 +6,10 @@ import {
   Button,
   Chip,
   Divider,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Grid,
   MenuItem,
   Paper,
@@ -18,23 +22,20 @@ import {
   TableRow,
   TextField,
   Typography,
+  IconButton,
 } from "@mui/material";
+import styles from "./admin.module.scss";
+import { useEffect, useState, useRef } from "react";
+import { getServices } from "../../services/serviceService";
+import { createOrder as createOrderService, getOrders, getOrderById, markOrderAsPaid } from "../../services/orderService";
+import { getUsersByRole } from "../../services/userServices";
+import { getMotorcycles } from "../../services/motorcycleService";
+import { loadLS } from "../../utils/loadLS";
+import { saveLS } from "../../utils/saveLS";
+import { LS_KEYS } from "../../enum/localStorageKeys";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import React, { useEffect, useRef, useState } from "react";
-import styles from "./admin.module.scss";
 import { useReactToPrint } from "react-to-print";
-import { LS_KEYS } from "../../enum";
-import { loadLS, saveLS } from "../../utils";
-import { getServices } from "../../services/serviceService";
-import { getMotorcycles } from "../../services/motorcycleService";
-import { getUsersByRole } from "../../services/userServices";
-import {
-  createOrder as createOrderAPI,
-  getOrders,
-  getOrderById,
-  markOrderAsPaid,
-} from "../../services/orderService";
 import RevlineLogo from "./../../assets/revline_bg_cropped.png";
 
 export function Orders({ role }) {
@@ -55,6 +56,7 @@ export function Orders({ role }) {
   const [printOrder, setPrintOrder] = useState(null);
   const [search, setSearch] = useState(""); // 🔹 search services
   const printRef = useRef(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const canCashier = (role) =>
     ["superadmin", "admin", "cashier"].includes(role);
@@ -146,7 +148,11 @@ export function Orders({ role }) {
       if (prev.includes(id)) {
         return prev.filter((x) => x !== id);
       } else {
-        setQuantities((q) => ({ ...(q || {}), [id]: q && q[id] ? q[id] : 1 }));
+        setQuantities((q) => {
+          const svc = services.find((s) => s.id === id);
+          const defaultQty = svc && svc.allowMultiple ? (q && q[id] ? q[id] : 1) : 1;
+          return { ...(q || {}), [id]: defaultQty };
+        });
         return [...prev, id];
       }
     });
@@ -157,7 +163,7 @@ export function Orders({ role }) {
     try {
       const items = selected.map((id) => services.find((s) => s.id === id));
       const servicesPayload = items.map((item) => {
-        const qty = quantities[item.id] || 1;
+        const qty = item.allowMultiple ? (quantities[item.id] || 1) : 1;
         return {
           name: item.name,
           price: item.price,
@@ -181,8 +187,8 @@ export function Orders({ role }) {
         services: servicesPayload,
       };
 
-      // Call API to create order
-      const createdOrder = await createOrderAPI(orderData);
+    // Call API to create order
+    const createdOrder = await createOrderService(orderData);
 
       // Fetch the full order details to get complete data including invoice number
       const fullOrderDetails = await getOrderById(createdOrder.id);
@@ -388,212 +394,214 @@ export function Orders({ role }) {
     <Grid width={"100%"} container spacing={2}>
       <Grid width={"100%"} item xs={12} md={12}>
         <Paper variant="outlined" sx={{ p: 2, height: "100%" }}>
-          <Typography variant="h6" gutterBottom>
-            Create Order
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6">Create Order</Typography>
+            <Button variant="contained" onClick={() => setCreateOpen(true)} startIcon={<CheckCircleIcon />}>New Order</Button>
+          </Box>
+          <Typography color="text.secondary" sx={{ mt: 1 }}>
+            Click "New Order" to open the order creation dialog.
           </Typography>
-          <Stack spacing={2}>
-            <Stack
-              flexDirection={{ xs: "column", md: "row" }}
-              columnGap={2}
-              rowGap={2}
-            >
-              {/* Customer name */}
-              <Stack width="100%">
-                <TextField
-                  label="Customer Name"
-                  fullWidth
-                  value={customer}
-                  onChange={(e) => setCustomer(e.target.value)}
-                />
-              </Stack>
-              <Stack width="100%">
-                <TextField
-                  label="Phone Number"
-                  fullWidth
-                  value={phoneNo}
-                  onChange={(e) => setPhoneNo(e.target.value)}
-                />
-              </Stack>
-              <Stack width="100%">
-                <TextField
-                  label="Plate Number"
-                  fullWidth
-                  value={platNo}
-                  onChange={(e) => setPlatNo(e.target.value)}
-                />
-              </Stack>
-              <Stack width="100%">
-                <TextField
-                  label="Mileage"
-                  fullWidth
-                  value={mileage}
-                  onChange={(e) => setMileage(e.target.value)}
-                />
-              </Stack>
-              <Stack width="100%">
-                <Autocomplete
-                  freeSolo
-                  options={motorcycles}
-                  getOptionLabel={(option) =>
-                    typeof option === "string"
-                      ? option
-                      : `${option.brand} ${option.model}`
-                  }
-                  value={bike}
-                  onChange={(event, newValue) => {
-                    if (typeof newValue === "string") {
-                      setBike(newValue);
-                      setSelectedMotorcycle(null);
-                    } else if (newValue) {
-                      setBike(`${newValue.brand} ${newValue.model}`);
-                      setSelectedMotorcycle(newValue);
-                    } else {
-                      setBike("");
-                      setSelectedMotorcycle(null);
-                    }
-                  }}
-                  onInputChange={(event, newInputValue) => {
-                    setBike(newInputValue);
-                    if (!newInputValue) setSelectedMotorcycle(null);
-                  }}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Bike" fullWidth />
-                  )}
-                />
-              </Stack>
-              <Stack width="100%">
-                <Autocomplete
-                  freeSolo
-                  options={mechanics}
-                  getOptionLabel={(option) =>
-                    typeof option === "string"
-                      ? option
-                      : option.name || option.email
-                  }
-                  value={mechanic}
-                  onChange={(event, newValue) => {
-                    if (typeof newValue === "string") {
-                      setMechanic(newValue);
-                      setSelectedMechanic(null);
-                    } else if (newValue) {
-                      setMechanic(newValue.name || newValue.email);
-                      setSelectedMechanic(newValue);
-                    } else {
-                      setMechanic("");
-                      setSelectedMechanic(null);
-                    }
-                  }}
-                  onInputChange={(event, newInputValue) => {
-                    setMechanic(newInputValue);
-                    if (!newInputValue) setSelectedMechanic(null);
-                  }}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Mechanic" fullWidth />
-                  )}
-                />
-              </Stack>
-            </Stack>
-          </Stack>
-
-          <Divider sx={{ my: 2 }} />
-
-          {/* 🔎 Search services */}
-          <TextField
-            label="Search Services"
-            fullWidth
-            variant="outlined"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-
-          <div className={styles.tableScrollable}>
-            <div className={styles.tableWrapper}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Pick</TableCell>
-                    <TableCell>Service</TableCell>
-                    <TableCell>Quantity</TableCell>
-                    <TableCell>Bike</TableCell>
-                    <TableCell>Details</TableCell>
-                    <TableCell>Price</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {services
-                    .filter((s) =>
-                      s.name.toLowerCase().includes(search.toLowerCase())
-                    )
-                    .map((s) => (
-                      <TableRow key={s.id} hover>
-                        <TableCell>
-                          <input
-                            type="checkbox"
-                            checked={selected.includes(s.id)}
-                            onChange={() => toggleSelectWithQuantity(s.id)}
-                          />
-                        </TableCell>
-                        <TableCell>{s.name}</TableCell>
-                        <TableCell>
-                          <TextField
-                            type="number"
-                            size="small"
-                            inputProps={{ min: 1 }}
-                            value={quantities[s.id] ?? 1}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              if (raw === "") {
-                                setQuantities((q) => ({
-                                  ...(q || {}),
-                                  [s.id]: "",
-                                }));
-                                return;
-                              }
-                              const parsed = parseInt(raw, 10);
-                              if (Number.isNaN(parsed)) return; // ignore invalid
-                              const v = Math.max(1, parsed);
-                              setQuantities((q) => ({
-                                ...(q || {}),
-                                [s.id]: v,
-                              }));
-                            }}
-                            sx={{ width: 90 }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {s.motorcycleList.map((m) => {
-                            return m.brand + " " + m.model + ", ";
-                          })}
-                        </TableCell>
-                        <TableCell>{s.details ? s.details : "-"}</TableCell>
-                        <TableCell>RM{s.price.toFixed(2)}</TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="space-between"
-            mt={2}
-          >
-            <Typography color="text.secondary">Total</Typography>
-            <Typography variant="h6">RM{total.toFixed(2)}</Typography>
-          </Box>
-          <Box display="flex" justifyContent="flex-end" mt={2}>
-            <Button
-              variant="contained"
-              startIcon={<CheckCircleIcon />}
-              onClick={createOrder}
-            >
-              Create & Show
-            </Button>
-          </Box>
         </Paper>
       </Grid>
+
+        {/* Create Order Dialog */}
+        <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="lg">
+          <DialogTitle>Create Order</DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={2}>
+              <Stack
+                flexDirection={{ xs: "column", md: "row" }}
+                columnGap={2}
+                rowGap={2}
+              >
+                {/* Customer name */}
+                <Stack width="100%">
+                  <TextField
+                    label="Customer Name"
+                    fullWidth
+                    value={customer}
+                    onChange={(e) => setCustomer(e.target.value)}
+                  />
+                </Stack>
+                <Stack width="100%">
+                  <TextField
+                    label="Phone Number"
+                    fullWidth
+                    value={phoneNo}
+                    onChange={(e) => setPhoneNo(e.target.value)}
+                  />
+                </Stack>
+                <Stack width="100%">
+                  <TextField
+                    label="Plate Number"
+                    fullWidth
+                    value={platNo}
+                    onChange={(e) => setPlatNo(e.target.value)}
+                  />
+                </Stack>
+                <Stack width="100%">
+                  <TextField
+                    label="Mileage"
+                    fullWidth
+                    value={mileage}
+                    onChange={(e) => setMileage(e.target.value)}
+                  />
+                </Stack>
+                <Stack width="100%">
+                  <Autocomplete
+                    freeSolo
+                    options={motorcycles}
+                    getOptionLabel={(option) =>
+                      typeof option === "string"
+                        ? option
+                        : `${option.brand} ${option.model}`
+                    }
+                    value={bike}
+                    onChange={(event, newValue) => {
+                      if (typeof newValue === "string") {
+                        setBike(newValue);
+                        setSelectedMotorcycle(null);
+                      } else if (newValue) {
+                        setBike(`${newValue.brand} ${newValue.model}`);
+                        setSelectedMotorcycle(newValue);
+                      } else {
+                        setBike("");
+                        setSelectedMotorcycle(null);
+                      }
+                    }}
+                    onInputChange={(event, newInputValue) => {
+                      setBike(newInputValue);
+                      if (!newInputValue) setSelectedMotorcycle(null);
+                    }}
+                    renderInput={(params) => (
+                      <TextField {...params} label="Bike" fullWidth />
+                    )}
+                  />
+                </Stack>
+                <Stack width="100%">
+                  <Autocomplete
+                    freeSolo
+                    options={mechanics}
+                    getOptionLabel={(option) =>
+                      typeof option === "string"
+                        ? option
+                        : option.name || option.email
+                    }
+                    value={mechanic}
+                    onChange={(event, newValue) => {
+                      if (typeof newValue === "string") {
+                        setMechanic(newValue);
+                        setSelectedMechanic(null);
+                      } else if (newValue) {
+                        setMechanic(newValue.name || newValue.email);
+                        setSelectedMechanic(newValue);
+                      } else {
+                        setMechanic("");
+                        setSelectedMechanic(null);
+                      }
+                    }}
+                    onInputChange={(event, newInputValue) => {
+                      setMechanic(newInputValue);
+                      if (!newInputValue) setSelectedMechanic(null);
+                    }}
+                    renderInput={(params) => (
+                      <TextField {...params} label="Mechanic" fullWidth />
+                    )}
+                  />
+                </Stack>
+              </Stack>
+
+              <Divider sx={{ my: 2 }} />
+
+              {/* 🔎 Search services */}
+              <TextField
+                label="Search Services"
+                fullWidth
+                variant="outlined"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                sx={{ mb: 2 }}
+              />
+
+              <div className={styles.tableScrollable}>
+                <div className={styles.tableWrapper}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Pick</TableCell>
+                        <TableCell>Service</TableCell>
+                        <TableCell>Quantity</TableCell>
+                        <TableCell>Bike</TableCell>
+                        <TableCell>Details</TableCell>
+                        <TableCell>Price</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {services
+                        .filter((s) =>
+                          s.name.toLowerCase().includes(search.toLowerCase())
+                        )
+                        .map((s) => (
+                          <TableRow key={s.id} hover>
+                            <TableCell>
+                              <input
+                                type="checkbox"
+                                checked={selected.includes(s.id)}
+                                onChange={() => toggleSelectWithQuantity(s.id)}
+                              />
+                            </TableCell>
+                            <TableCell>{s.name}</TableCell>
+                            <TableCell>
+                              {s.allowMultiple ? (
+                                <TextField
+                                  type="number"
+                                  size="small"
+                                  inputProps={{ min: 1 }}
+                                  value={quantities[s.id] ?? 1}
+                                  onChange={(e) => {
+                                    const raw = e.target.value;
+                                    if (raw === "") {
+                                      setQuantities((q) => ({ ...(q || {}), [s.id]: "" }));
+                                      return;
+                                    }
+                                    const parsed = parseInt(raw, 10);
+                                    if (Number.isNaN(parsed)) return; // ignore invalid
+                                    const v = Math.max(1, parsed);
+                                    setQuantities((q) => ({ ...(q || {}), [s.id]: v }));
+                                  }}
+                                  sx={{ width: 90 }}
+                                />
+                              ) : (
+                                <TextField type="number" size="small" value={1} disabled sx={{ width: 90 }} />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {s.motorcycleList?.map((m) => {
+                                return m.brand + " " + m.model + ", ";
+                              })}
+                            </TableCell>
+                            <TableCell>{s.details ? s.details : "-"}</TableCell>
+                            <TableCell>RM{s.price.toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              <Box display="flex" alignItems="center" justifyContent="space-between" mt={2}>
+                <Typography color="text.secondary">Total</Typography>
+                <Typography variant="h6">RM{total.toFixed(2)}</Typography>
+              </Box>
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button variant="contained" onClick={async () => { await createOrder(); setCreateOpen(false); }}>
+              Create & Show
+            </Button>
+          </DialogActions>
+        </Dialog>
 
       {/* Recent Orders remains same */}
       <Grid item xs={12} md={12} width={"100%"}>

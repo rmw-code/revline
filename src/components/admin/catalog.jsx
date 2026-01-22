@@ -13,6 +13,8 @@ import {
   IconButton,
   Paper,
   Stack,
+  Checkbox,
+  FormControlLabel,
   Table,
   TableBody,
   TableCell,
@@ -61,7 +63,9 @@ export function Catalog({ role }) {
     name: "",
     price: 0,
     details: "",
+    // keep quantity in state for backwards compatibility but removed from dialog
     quantity: 0,
+    allowMultiple: false,
     bike: [],
     type: "",
   });
@@ -154,6 +158,7 @@ export function Catalog({ role }) {
       price: 0,
       details: "",
       quantity: 0,
+      allowMultiple: false,
       bike: [],
       type: "",
     });
@@ -187,8 +192,9 @@ export function Catalog({ role }) {
     const serviceType = serviceTypeObjects.find((st) => st.name === form.type);
     const serviceTypeId = serviceType ? serviceType.id : null;
 
-    // Get motorcycle IDs from selected bike strings
-    const motorcycleIds = form.bike
+    // Get motorcycle IDs from selected bike strings (defensive: handle different shapes)
+    const bikeArr = Array.isArray(form.bike) ? form.bike : [];
+    const motorcycleIds = bikeArr
       .map((bikeStr) => {
         const motorcycle = motorcycleObjects.find(
           (m) => `${m.brand} ${m.model}` === bikeStr
@@ -203,7 +209,9 @@ export function Catalog({ role }) {
           name: form.name,
           price: Number(form.price),
           details: form.details,
-          quantity: Number(form.quantity),
+          // keep quantity for backend compatibility and also send allowMultiple
+          quantity: Number(form.quantity) || 0,
+          allowMultiple: !!form.allowMultiple,
           serviceTypeId: serviceTypeId,
           motorcycleIds: motorcycleIds,
         });
@@ -212,7 +220,8 @@ export function Catalog({ role }) {
           name: form.name,
           price: Number(form.price),
           details: form.details,
-          quantity: Number(form.quantity),
+          quantity: Number(form.quantity) || 0,
+          allowMultiple: !!form.allowMultiple,
           serviceTypeId: serviceTypeId,
           motorcycleIds: motorcycleIds,
         });
@@ -227,7 +236,18 @@ export function Catalog({ role }) {
   };
 
   const handleEdit = (s) => {
-    setForm(s);
+    // Normalize incoming service object into the dialog form shape
+    const bikeSelection = s.bike ?? (s.motorcycleList ? s.motorcycleList.map(m => `${m.brand} ${m.model}`) : []);
+    setForm({
+      id: s.id ?? "",
+      name: s.name ?? "",
+      price: s.price ?? 0,
+      details: s.details ?? "",
+      quantity: s.quantity ?? 0,
+      allowMultiple: !!s.allowMultiple,
+      bike: bikeSelection,
+      type: s.serviceTypeName ?? s.type ?? "",
+    });
     setEditing(true);
     setOpen(true);
   };
@@ -428,6 +448,18 @@ export function Catalog({ role }) {
                 fullWidth
                 value={form.details}
                 onChange={(e) => setForm({ ...form, details: e.target.value })}
+              />
+            </Stack>
+            <Stack direction="row" alignItems="center" spacing={2}>
+              {/* Checkbox: possible to have more than one */}
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={!!form.allowMultiple}
+                    onChange={(e) => setForm({ ...form, allowMultiple: e.target.checked })}
+                  />
+                }
+                label="Possible to have more than one"
               />
             </Stack>
           </Stack>
