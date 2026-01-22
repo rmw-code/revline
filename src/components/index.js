@@ -3,7 +3,7 @@ export * from "./admin/catalog";
 export * from "./admin/orders";
 export * from "./admin/tasks";
 export * from "./admin/users";
-export * from "./admin/employee";
+export * from "./admin/employee/employee";
 export * from "./customer/customer";
 export * from "./employee/leave";
 export * from "./layout/topBar";
