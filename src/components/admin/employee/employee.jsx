@@ -5,11 +5,12 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Paper, Stack, Switch, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography, Tabs, Tab } from "@mui/material";
 import { useEffect, useState } from "react";
 import styles from "../admin.module.scss";
-import { getUsers } from "../../../services/userServices";
+// Removed getUsers import
 import { getEmployees, updateEmployeeDetails, updateSalaryPublishStatus } from "../../../services/employeeService";
 import { LS_KEYS } from "../../../enum/localStorageKeys";
 import { loadLS } from "../../../utils/loadLS";
 import { saveLS } from "../../../utils/saveLS";
+import { formatDateForInput, formatDateForApi } from "../../../utils/dateUtils";
 
 import PersonalTab from "./tabs/PersonalTab";
 import BankingTab from "./tabs/BankingTab";
@@ -18,13 +19,13 @@ import RoleTab from "./tabs/RoleTab";
 import SalaryTab from "./tabs/SalaryTab";
 
 export function EmployeeAdmin({ role }) {
-  const [users, setUsers] = useState([]);
+  // Removed users state
   const [employees, setEmployees] = useState([]); // employee data from API
   const [salaries, setSalaries] = useState({}); // map userId => salary record
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [tabIndex, setTabIndex] = useState(0);
-  const [form, setForm] = useState({ baseSalary: "", deductions: [], published: false, contact: { address: '', phone: '', emergencyContactName: '', emergencyContactNo: '', bankName: '', bankAccountNumber: '' }, leaveBalances: { annual: 0, sick: 0, unpaid: 0 }, epfContribution: 11, eisContribution: 0, position: '' });
+  const [form, setForm] = useState({ baseSalary: "", items: [], published: false, contact: { address: '', phone: '', emergencyContactName: '', emergencyContactNo: '', bankName: '', bankAccountNumber: '' }, leaveBalances: { annual: 0, sick: 0, unpaid: 0 }, epfContribution: 11, eisContribution: 0, position: '' });
 
   useEffect(() => {
     const fetch = async () => {
@@ -33,10 +34,8 @@ export function EmployeeAdmin({ role }) {
         const employeeData = await getEmployees();
         console.log("Employee data from API:", employeeData);
         setEmployees(employeeData || []);
-        
-        // Optionally, still fetch users if needed for other purposes
-        const res = await getUsers(0, 200);
-        setUsers(res.content || []);
+
+        // Removed getUsers call
       } catch (e) {
         console.error("Failed to load employees", e);
       }
@@ -47,28 +46,29 @@ export function EmployeeAdmin({ role }) {
     setSalaries(existing || {});
   }, []);
 
-  const openFor = (user) => {
-    // Find employee data from API response
-    const employeeData = employees.find(emp => emp.userId === user.id);
-    
+  const openFor = (emp) => {
+    // Use API data directly
+    const employeeData = emp;
+
     if (employeeData) {
       // Use API data to populate form
-      const deductions = (employeeData.salaryItems || []).map(item => ({
+      const items = (employeeData.salaryItems || []).map(item => ({
         title: item.name || "",
-        amount: Number(item.amount || 0)
+        amount: Number(item.amount || 0),
+        type: item.type || "OTHER"
       }));
-      
+
       setForm({
         baseSalary: employeeData.baseSalary || "",
-        deductions: deductions,
+        items: items,
         published: !!employeeData.isSalaryPublished,
         contact: {
-          email: employeeData.email || user.email || '',
-          altEmail: employeeData.altEmail || '',
-          fullName: employeeData.fullName || user.name || '',
-          nickname: employeeData.nickname || user.name || '',
-          icNumber: employeeData.icNumber || '',
-          birthDate: employeeData.birthDate || '',
+          email: employeeData.email || '',
+          altEmail: employeeData.alternateEmail || employeeData.altEmail || '',
+          fullName: employeeData.fullName || employeeData.name || '',
+          nickname: employeeData.nickname || employeeData.name || '',
+          icNumber: employeeData.icNo || employeeData.icNumber || '',
+          birthDate: formatDateForInput(employeeData.dob || employeeData.birthDate || ''),
           address: employeeData.address || '',
           phone: employeeData.phone || '',
           emergencyContactName: employeeData.emergencyContactName || '',
@@ -86,31 +86,26 @@ export function EmployeeAdmin({ role }) {
         position: employeeData.position || ''
       });
     } else {
-      // Fallback to localStorage data
-  const s = salaries[user.id] || { baseSalary: "", deductions: [], published: false, contact: { address: '', phone: '', emergencyContactName: '', emergencyContactNo: '', bankName: '', bankAccountNumber: '' }, leaveBalances: { annual: 0, sick: 0, unpaid: 0 }, epfContribution: 11, eisContribution: 0, position: '' };
-      let ded = [];
-      if (Array.isArray(s.deductions)) {
-        ded = s.deductions.map((d) => {
-          if (d && typeof d === 'object') return { title: d.title ?? "", amount: Number(d.amount ?? 0) };
-          return { title: "", amount: Number(d || 0) };
-        });
-      } else if (typeof s.deductions === "number") {
-        ded = [{ title: "Other", amount: s.deductions }];
-      }
-  setForm({ baseSalary: s.baseSalary ?? "", deductions: ded, published: !!s.published, contact: { ...(s.contact || {}), email: (s.contact && s.contact.email) || user.email || '', altEmail: (s.contact && s.contact.altEmail) || '' }, leaveBalances: s.leaveBalances || { annual: 0, sick: 0, unpaid: 0 }, epfContribution: s.epfContribution ?? 11, eisContribution: s.eisContribution ?? 0, position: s.position ?? '' });
+      // Fallback or defaults if for some reason data is missing, though we iterate employees
+      setForm({ baseSalary: "", items: [], published: false, contact: { address: '', phone: '', emergencyContactName: '', emergencyContactNo: '', bankName: '', bankAccountNumber: '' }, leaveBalances: { annual: 0, sick: 0, unpaid: 0 }, epfContribution: 11, eisContribution: 0, position: '' });
     }
-    
-    setEditing(user);
+
+    // Set editing object, ensuring we have the id (userId) for saving
+    setEditing({ ...emp, id: emp.userId });
     setTabIndex(0);
     setOpen(true);
   };
 
   const save = async () => {
     if (!editing) return;
-    
+
     try {
       // Prepare data for API
       const details = {
+        name: form.contact?.fullName || '',
+        alternateEmail: form.contact?.altEmail || '',
+        icNo: form.contact?.icNumber || '',
+        dob: formatDateForApi(form.contact?.birthDate || ''),
         address: form.contact?.address || '',
         phone: form.contact?.phone || '',
         emergencyContactName: form.contact?.emergencyContactName || '',
@@ -121,16 +116,29 @@ export function EmployeeAdmin({ role }) {
         annualLeave: Number(form.leaveBalances?.annual) || 0,
         sickLeave: Number(form.leaveBalances?.sick) || 0,
         unpaidLeave: Number(form.leaveBalances?.unpaid) || 0,
-        position: form.position || ''
+        position: form.position || '',
+        // Map items back to what backend might expect?
+        // If backend returns 'items', let's send 'items'.
+        // But if previous was salaryItems or deductions...
+        // Let's send 'items' and hope backend handles it.
+        items: (form.items || []).map(i => ({
+          name: i.title,
+          amount: Number(i.amount),
+          type: i.type
+        })),
+        baseSalary: Number(form.baseSalary || 0),
+        epfContribution: Number(form.epfContribution || 0),
+        eisContribution: Number(form.eisContribution || 0)
       };
-      
+
       // Call API to update employee details
+      // editing.id here corresponds to userId because we set it in openFor
       await updateEmployeeDetails(editing.id, details);
-      
+
       // Refetch employee data to get updated information
       const updatedEmployeeData = await getEmployees();
       setEmployees(updatedEmployeeData || []);
-      
+
       // Also save to localStorage for backward compatibility
       const record = {
         userId: editing.id,
@@ -147,7 +155,7 @@ export function EmployeeAdmin({ role }) {
       const next = { ...salaries, [editing.id]: record };
       setSalaries(next);
       saveLS(LS_KEYS.EMPLOYEE_SALARIES, next);
-      
+
       setOpen(false);
       setEditing(null);
     } catch (error) {
@@ -156,24 +164,24 @@ export function EmployeeAdmin({ role }) {
     }
   };
 
-  const togglePublish = async (user) => {
+  const togglePublish = async (emp) => {
     try {
-      // Get current published status from API data
-      const empData = employees.find(emp => emp.userId === user.id);
-      const currentStatus = empData ? !!empData.isSalaryPublished : false;
+      // Get current published status from passed employee object
+      const currentStatus = !!emp.isSalaryPublished;
       const newStatus = !currentStatus;
-      
+
       // Call API to update salary publish status
-      await updateSalaryPublishStatus(user.id, newStatus);
-      
+      // Use emp.userId
+      await updateSalaryPublishStatus(emp.userId, newStatus);
+
       // Refetch employee data to get updated information
       const updatedEmployeeData = await getEmployees();
       setEmployees(updatedEmployeeData || []);
-      
+
       // Also update localStorage for backward compatibility
-      const current = salaries[user.id] || { baseSalary: 0, deductions: 0, published: false, contact: { address: '', phone: '', emergencyContactName: '', emergencyContactNo: '', bankName: '', bankAccountNumber: '' }, leaveBalances: { annual: 0, sick: 0, unpaid: 0 }, epfContribution: 11, eisContribution: 0, position: '' };
+      const current = salaries[emp.userId] || { baseSalary: 0, deductions: 0, published: false, contact: { address: '', phone: '', emergencyContactName: '', emergencyContactNo: '', bankName: '', bankAccountNumber: '' }, leaveBalances: { annual: 0, sick: 0, unpaid: 0 }, epfContribution: 11, eisContribution: 0, position: '' };
       const nextRecord = { ...current, published: newStatus, updatedAt: new Date().toISOString() };
-      const next = { ...salaries, [user.id]: nextRecord };
+      const next = { ...salaries, [emp.userId]: nextRecord };
       setSalaries(next);
       saveLS(LS_KEYS.EMPLOYEE_SALARIES, next);
     } catch (error) {
@@ -222,39 +230,38 @@ export function EmployeeAdmin({ role }) {
             </TableRow>
           </TableHead>
           <TableBody>
-            {users.map((u) => {
-              // Get employee data from API for accurate display
-              const empData = employees.find(emp => emp.userId === u.id);
-              const s = salaries[u.id];
-              
+            {employees.map((emp) => {
+              // Iterate over employees directly
+              const s = salaries[emp.userId];
+
               return (
-                <TableRow key={u.id} hover>
-                  <TableCell className={styles.ellipsis}>{u.name}</TableCell>
-                  <TableCell className={styles.ellipsis}>{u.email}</TableCell>
-                  <TableCell className={styles.ellipsis}>{u.role}</TableCell>
-                  <TableCell>{empData ? empData.baseSalary : (s ? s.baseSalary : "—")}</TableCell>
-                    <TableCell className={styles.ellipsis}>{empData ? empData.totalDeductions?.toLocaleString() : (s ? (() => {
-                      const ded = s.deductions;
-                      if (Array.isArray(ded)) return ded.reduce((sum, d) => sum + (Number(d.amount) || 0), 0).toLocaleString();
-                      if (typeof ded === 'number') return Number(ded).toLocaleString();
-                      return "—";
-                    })() : "—")}</TableCell>
-                    <TableCell>{empData ? Number(empData.annualLeave || 0) : (s && s.leaveBalances ? (Number(s.leaveBalances.annual) || 0) : 0)}</TableCell>
-                    <TableCell>{empData ? Number(empData.sickLeave || 0) : (s && s.leaveBalances ? (Number(s.leaveBalances.sick) || 0) : 0)}</TableCell>
-                    <TableCell>{empData ? Number(empData.unpaidLeave || 0) : (s && s.leaveBalances ? (Number(s.leaveBalances.unpaid) || 0) : 0)}</TableCell>
-                    <TableCell className={styles.ellipsis}>{empData ? empData.address || '—' : (s && s.contact ? s.contact.address || '—' : '—')}</TableCell>
-                    <TableCell className={styles.ellipsis}>{empData ? empData.phone || '—' : (s && s.contact ? s.contact.phone || '—' : '—')}</TableCell>
-                    <TableCell className={styles.ellipsis}>{empData ? empData.emergencyContactName || '—' : (s && s.contact ? s.contact.emergencyContactName || '—' : '—')}</TableCell>
-                    <TableCell className={styles.ellipsis}>{empData ? empData.emergencyContactNo || '—' : (s && s.contact ? s.contact.emergencyContactNo || '—' : '—')}</TableCell>
-                    <TableCell className={styles.ellipsis}>{empData ? empData.bankName || '—' : (s && s.contact ? s.contact.bankName || '—' : '—')}</TableCell>
-                    <TableCell className={styles.ellipsis}>{empData ? empData.bankAccountNumber || '—' : (s && s.contact ? s.contact.bankAccountNumber || '—' : '—')}</TableCell>
-                    <TableCell>{empData ? Number(empData.epfContribution || 0) : (s ? (Number(s.epfContribution) || 0) : 0)}</TableCell>
-                    <TableCell>{empData ? Number(empData.eisContribution || 0) : (s ? (Number(s.eisContribution) || 0) : 0)}</TableCell>
+                <TableRow key={emp.userId} hover>
+                  <TableCell className={styles.ellipsis}>{emp.fullName || emp.name}</TableCell>
+                  <TableCell className={styles.ellipsis}>{emp.email}</TableCell>
+                  <TableCell className={styles.ellipsis}>{emp.role || '—'}</TableCell>
+                  <TableCell>{emp.baseSalary || (s ? s.baseSalary : "—")}</TableCell>
+                  <TableCell className={styles.ellipsis}>{emp.totalDeductions?.toLocaleString() || (s ? (() => {
+                    const ded = s.deductions;
+                    if (Array.isArray(ded)) return ded.reduce((sum, d) => sum + (Number(d.amount) || 0), 0).toLocaleString();
+                    if (typeof ded === 'number') return Number(ded).toLocaleString();
+                    return "—";
+                  })() : "—")}</TableCell>
+                  <TableCell>{Number(emp.annualLeave || 0) || (s && s.leaveBalances ? (Number(s.leaveBalances.annual) || 0) : 0)}</TableCell>
+                  <TableCell>{Number(emp.sickLeave || 0) || (s && s.leaveBalances ? (Number(s.leaveBalances.sick) || 0) : 0)}</TableCell>
+                  <TableCell>{Number(emp.unpaidLeave || 0) || (s && s.leaveBalances ? (Number(s.leaveBalances.unpaid) || 0) : 0)}</TableCell>
+                  <TableCell className={styles.ellipsis}>{emp.address || (s && s.contact ? s.contact.address || '—' : '—')}</TableCell>
+                  <TableCell className={styles.ellipsis}>{emp.phone || (s && s.contact ? s.contact.phone || '—' : '—')}</TableCell>
+                  <TableCell className={styles.ellipsis}>{emp.emergencyContactName || (s && s.contact ? s.contact.emergencyContactName || '—' : '—')}</TableCell>
+                  <TableCell className={styles.ellipsis}>{emp.emergencyContactNo || (s && s.contact ? s.contact.emergencyContactNo || '—' : '—')}</TableCell>
+                  <TableCell className={styles.ellipsis}>{emp.bankName || (s && s.contact ? s.contact.bankName || '—' : '—')}</TableCell>
+                  <TableCell className={styles.ellipsis}>{emp.bankAccountNumber || (s && s.contact ? s.contact.bankAccountNumber || '—' : '—')}</TableCell>
+                  <TableCell>{Number(emp.epfContribution || 0) || (s ? (Number(s.epfContribution) || 0) : 0)}</TableCell>
+                  <TableCell>{Number(emp.eisContribution || 0) || (s ? (Number(s.eisContribution) || 0) : 0)}</TableCell>
                   <TableCell>
-                    <Switch size="small" checked={empData ? !!empData.isSalaryPublished : !!(s && s.published)} onChange={() => togglePublish(u)} />
+                    <Switch size="small" checked={!!emp.isSalaryPublished} onChange={() => togglePublish(emp)} />
                   </TableCell>
                   <TableCell align="right">
-                    <IconButton size="small" onClick={() => openFor(u)}>
+                    <IconButton size="small" onClick={() => openFor(emp)}>
                       <EditIcon fontSize="small" />
                     </IconButton>
                   </TableCell>
