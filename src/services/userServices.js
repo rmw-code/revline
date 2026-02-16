@@ -37,3 +37,39 @@ export const getUsersByRole = async (role = "", page = 0, size = 10) => {
     method: "GET",
   });
 };
+
+/**
+ * Create a new user
+ * @param {Object} userData - User data to create
+ * @returns {Promise} - API response with created user data
+ */
+export const createUser = async (userData) => {
+  return await request("/sec/users", {
+    method: "POST",
+    body: JSON.stringify(userData),
+  });
+};
+
+/**
+ * Update an existing user
+ * @param {string} userId - User ID to update
+ * @param {Object} userData - Updated user data
+ * @returns {Promise} - API response with updated user data
+ */
+export const updateUser = async (userId, userData) => {
+  return await request(`/sec/users/${userId}`, {
+    method: "PUT",
+    body: JSON.stringify(userData),
+  });
+};
+
+/**
+ * Delete a user
+ * @param {string} userId - User ID to delete
+ * @returns {Promise} - API response
+ */
+export const deleteUser = async (userId) => {
+  return await request(`/sec/users/${userId}`, {
+    method: "DELETE",
+  });
+};

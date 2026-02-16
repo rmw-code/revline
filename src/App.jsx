@@ -54,7 +54,7 @@ function Shell() {
     <Box sx={{ bgcolor: "background.default", minHeight: "100vh" }}>
       <TopBar user={session} onLogout={logout} onOpenDisplay={openDisplay} />
       <Container maxWidth="lg" sx={{ py: 3 }}>
-        <TabsWrapper role={session.role} />
+        <TabsWrapper roles={session.roles || session.role} />
         <Box mt={2} textAlign="center">
           <Typography variant="caption" color="text.disabled">
             Revline Motor Works
@@ -67,7 +67,7 @@ function Shell() {
 
 const comingSoon = () => {};
 
-function TabsWrapper({ role }) {
+function TabsWrapper({ roles }) {
   const [tab, setTab] = useState(0);
   return (
     <Box>
@@ -90,15 +90,15 @@ function TabsWrapper({ role }) {
         <Tab label="Users" />
       </Tabs>
       <Box sx={{ mt: 2 }}>
-        {tab === 0 && <Catalog role={role} />}
-        {tab === 1 && <Orders role={role} />}
+        {tab === 0 && <Catalog roles={roles} />}
+        {tab === 1 && <Orders roles={roles} />}
         {tab === 2 && <>Coming Soon</>}
-        {tab === 3 && <Tasks role={role} />}
+        {tab === 3 && <Tasks roles={roles} />}
         {tab === 4 && <Leave />}
         {tab === 5 && <Earning />}
         {tab === 6 && <Attendance />}
-        {tab === 7 && <EmployeeAdmin role={role} />}
-        {tab === 8 && <Users role={role} />}
+        {tab === 7 && <EmployeeAdmin roles={roles} />}
+        {tab === 8 && <Users roles={roles} />}
       </Box>
     </Box>
   );

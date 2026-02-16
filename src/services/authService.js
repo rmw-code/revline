@@ -27,7 +27,15 @@ export const login = async (email, password) => {
             saveLS(LS_KEYS.TOKEN, data.token);
         }
 
-        return data;
+        // Save user data (name, email, roles) in session
+        const userData = {
+            name: data.name,
+            email: data.email,
+            roles: data.roles || [],
+            token: data.token
+        };
+
+        return userData;
     } catch (error) {
         throw error;
     }

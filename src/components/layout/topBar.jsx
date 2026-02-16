@@ -6,6 +6,7 @@ import AccountCircle from '@mui/icons-material/AccountCircle';
 import RMWLogo from "./../../assets/RMW-transparent.png";
 import styles from "./topBar.module.scss";
 import { useState } from "react";
+import { getRolesDisplay } from "../../utils";
 
 export function TopBar({ user, onLogout, onOpenDisplay }) {
   const [menuAnchor, setMenuAnchor] = useState(null);
@@ -32,7 +33,7 @@ export function TopBar({ user, onLogout, onOpenDisplay }) {
         </Stack>
         <Stack className={styles.topBarActions} flexDirection={'row'} alignItems={'center'}>
           <Chip
-            label={user.role}
+            label={getRolesDisplay(user.roles || user.role)}
             variant="outlined"
             size="small"
             sx={{ mr: 1 }}

@@ -11,6 +11,7 @@ import { LS_KEYS } from "../../../enum/localStorageKeys";
 import { loadLS } from "../../../utils/loadLS";
 import { saveLS } from "../../../utils/saveLS";
 import { formatDateForInput, formatDateForApi } from "../../../utils/dateUtils";
+import { hasAnyRole } from "../../../utils";
 
 import PersonalTab from "./tabs/PersonalTab";
 import BankingTab from "./tabs/BankingTab";
@@ -18,7 +19,7 @@ import LeavesTab from "./tabs/LeavesTab";
 import RoleTab from "./tabs/RoleTab";
 import SalaryTab from "./tabs/SalaryTab";
 
-export function EmployeeAdmin({ role }) {
+export function EmployeeAdmin({ roles }) {
   // Removed users state
   const [employees, setEmployees] = useState([]); // employee data from API
   const [salaries, setSalaries] = useState({}); // map userId => salary record
@@ -191,8 +192,8 @@ export function EmployeeAdmin({ role }) {
   };
 
   // Only allow managers/superadmin to access
-  const canManage = (r) => r === "superadmin" || r === "admin";
-  if (!canManage(role)) {
+  const canManage = (roles) => hasAnyRole(roles, ["SUPERADMIN", "ADMIN"]);
+  if (!canManage(roles)) {
     return (<Typography color="text.secondary">You do not have permission to manage employees.</Typography>);
   }
 

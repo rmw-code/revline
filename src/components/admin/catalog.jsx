@@ -32,9 +32,10 @@ import {
   updateService,
 } from "../../services/serviceService";
 import { getServiceTypes } from "../../services/serviceTypesService";
+import { hasAnyRole } from "../../utils";
 import styles from "./admin.module.scss";
 
-const canManageServices = (role) => role === "superadmin" || role === "admin";
+const canManageServices = (roles) => hasAnyRole(roles, ["SUPERADMIN", "ADMIN"]);
 
 // Helper function to format motorcycle list
 const formatMotorcycleList = (motorcycleList) => {
@@ -44,7 +45,7 @@ const formatMotorcycleList = (motorcycleList) => {
   return motorcycleList.map((bike) => `${bike.brand} ${bike.model}`).join(", ");
 };
 
-export function Catalog({ role }) {
+export function Catalog({ roles }) {
   /*
   const [services, setServices] = useState(
     loadLS(LS_KEYS.SERVICES, DEFAULT_SERVICES)
@@ -270,7 +271,7 @@ export function Catalog({ role }) {
         mb={2}
       >
         <Typography variant="h6">Service Catalog</Typography>
-        {canManageServices(role) && (
+        {canManageServices(roles) && (
           <Button
             startIcon={<AddIcon />}
             variant="contained"
@@ -309,7 +310,7 @@ export function Catalog({ role }) {
               <TableCell>Bike</TableCell>
               <TableCell>Type</TableCell>
               <TableCell>Details</TableCell>
-              {canManageServices(role) && (
+              {canManageServices(roles) && (
                 <TableCell align="right">Actions</TableCell>
               )}
             </TableRow>
@@ -343,7 +344,7 @@ export function Catalog({ role }) {
                 >
                   {s.details && s.details.trim() ? s.details : '-'}
                 </TableCell>
-                {canManageServices(role) && (
+                {canManageServices(roles) && (
                   <TableCell align="right">
                     <IconButton size="small" onClick={() => handleEdit(s)}>
                       <EditIcon fontSize="small" />
@@ -358,7 +359,7 @@ export function Catalog({ role }) {
             {filtered.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={canManageServices(role) ? 7 : 6}
+                  colSpan={canManageServices(roles) ? 7 : 6}
                   align="center"
                   sx={{ py: 6, color: "text.secondary" }}
                 >

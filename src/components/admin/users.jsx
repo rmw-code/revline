@@ -2,6 +2,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import PeopleIcon from "@mui/icons-material/People";
 import {
+    Alert,
     Box,
     Button,
     Chip,
@@ -9,8 +10,10 @@ import {
     DialogActions,
     DialogContent,
     DialogTitle,
+    FormControl,
     Grid,
     IconButton,
+    InputLabel,
     MenuItem,
     Paper,
     Select,
@@ -24,37 +27,41 @@ import {
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import styles from "./admin.module.scss";
-import { getUsers } from "../../services/userServices";
+import { getUsers, createUser, updateUser, deleteUser } from "../../services/userServices";
 import { ROLES } from "../../constants";
+import { hasRole } from "../../utils";
 
-export function Users({ role }) {
+export function Users({ roles }) {
   const [users, setUsers] = useState([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({
     id: "",
     name: "",
     username: "",
     email: "",
-    role: "cashier",
+    roles: [],
     password: "pass",
   });
-  const canManageUsers = (role) => role === "superadmin";
+  const canManageUsers = (roles) => hasRole(roles, "SUPERADMIN");
+
+  const fetchUsers = async () => {
+    try {
+      const response = await getUsers(0, 100);
+      setUsers(response.content || []);
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+      setError("Failed to load users");
+    }
+  };
 
   useEffect(() => {
-    // Fetch users from API on component mount
-    const fetchUsers = async () => {
-      try {
-        const response = await getUsers(0, 100);
-        setUsers(response.content || []);
-      } catch (error) {
-        console.error("Failed to fetch users:", error);
-      }
-    };
     fetchUsers();
   }, []);
 
-  if (!canManageUsers(role))
+  if (!canManageUsers(roles))
     return (
       <Typography color="text.secondary">
         Only superadmin can manage users.
@@ -67,25 +74,53 @@ export function Users({ role }) {
       name: "",
       username: "",
       email: "",
-      role: "cashier",
+      roles: [],
       password: "pass",
     });
     setEditing(false);
+    setError("");
   };
-  const save = () => {
-    if (!form.name || !form.email || !form.username) return;
-    if (editing)
-      setUsers((prev) => prev.map((u) => (u.id === form.id ? form : u)));
-    else setUsers((prev) => [{ ...form, id: crypto.randomUUID() }, ...prev]);
-    setOpen(false);
-    reset();
+  const save = async () => {
+    if (!form.name || !form.email) return;
+    
+    setLoading(true);
+    setError("");
+    
+    try {
+      if (editing) {
+        await updateUser(form.id, form);
+      } else {
+        await createUser(form);
+      }
+      
+      await fetchUsers();
+      setOpen(false);
+      reset();
+    } catch (err) {
+      console.error("Failed to save user:", err);
+      setError(err.message || "Failed to save user");
+    } finally {
+      setLoading(false);
+    }
   };
   const edit = (u) => {
-    setForm(u);
+    // Handle both old format (role) and new format (roles)
+    const userRoles = u.roles || (u.role ? [u.role] : []);
+    setForm({ ...u, roles: userRoles });
     setEditing(true);
     setOpen(true);
   };
-  const remove = (id) => setUsers((prev) => prev.filter((u) => u.id !== id));
+  const remove = async (id) => {
+    if (!confirm("Are you sure you want to delete this user?")) return;
+    
+    try {
+      await deleteUser(id);
+      await fetchUsers();
+    } catch (err) {
+      console.error("Failed to delete user:", err);
+      setError(err.message || "Failed to delete user");
+    }
+  };
 
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
@@ -113,7 +148,7 @@ export function Users({ role }) {
             <TableCell>Name</TableCell>
             <TableCell>Username</TableCell>
             <TableCell>Email</TableCell>
-            <TableCell>Role</TableCell>
+            <TableCell>Roles</TableCell>
             <TableCell align="right">Actions</TableCell>
           </TableRow>
         </TableHead>
@@ -124,7 +159,15 @@ export function Users({ role }) {
               <TableCell>{u.username}</TableCell>
               <TableCell>{u.email}</TableCell>
               <TableCell>
-                <Chip label={u.role} variant="outlined" size="small" />
+                {(u.roles || [u.role]).map((role, idx) => (
+                  <Chip 
+                    key={idx} 
+                    label={role} 
+                    variant="outlined" 
+                    size="small" 
+                    sx={{ mr: 0.5, mb: 0.5 }}
+                  />
+                ))}
               </TableCell>
               <TableCell align="right">
                 <IconButton size="small" onClick={() => edit(u)}>
@@ -142,7 +185,10 @@ export function Users({ role }) {
 
       <Dialog
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={() => {
+          setOpen(false);
+          setError("");
+        }}
         fullWidth
         maxWidth="sm"
       >
@@ -167,17 +213,35 @@ export function Users({ role }) {
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <Select
-                fullWidth
-                value={form.role}
-                onChange={(e) => setForm({ ...form, role: e.target.value })}
-              >
-                {ROLES.map((r) => (
-                  <MenuItem key={r} value={r}>
-                    {r}
-                  </MenuItem>
-                ))}
-              </Select>
+              <FormControl fullWidth>
+                <InputLabel id="roles-label">Roles</InputLabel>
+                <Select
+                  labelId="roles-label"
+                  label="Roles"
+                  multiple
+                  displayEmpty
+                  value={form.roles}
+                  onChange={(e) => setForm({ ...form, roles: e.target.value })}
+                  renderValue={(selected) => {
+                    if (selected.length === 0) {
+                      return <em>Select roles</em>;
+                    }
+                    return (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => (
+                          <Chip key={value} label={value} size="small" />
+                        ))}
+                      </Box>
+                    );
+                  }}
+                >
+                  {ROLES.map((r) => (
+                    <MenuItem key={r} value={r}>
+                      {r}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
             <Grid item xs={12} md={6}>
               <TextField
@@ -188,11 +252,16 @@ export function Users({ role }) {
               />
             </Grid>
           </Grid>
+          {error && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {error}
+            </Alert>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={save}>
-            {editing ? "Update" : "Save"}
+          <Button onClick={() => setOpen(false)} disabled={loading}>Cancel</Button>
+          <Button variant="contained" onClick={save} disabled={loading}>
+            {loading ? "Saving..." : editing ? "Update" : "Save"}
           </Button>
         </DialogActions>
       </Dialog>

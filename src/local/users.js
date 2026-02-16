@@ -4,7 +4,7 @@ export const DEFAULT_USERS = [
     username: "nas",
     name: "Nas",
     email: "nas@revlinemotorworks.com",
-    role: "superadmin",
+    role: "SUPERADMIN",
     password: "passNas",
   },
   {

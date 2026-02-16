@@ -19,8 +19,9 @@ import { useEffect, useState } from "react";
 import { getOrders, updateOrderStatus } from "../../services/orderService";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { hasAnyRole } from "../../utils";
 
-export function Tasks({ role }) {
+export function Tasks({ roles }) {
   const [orders, setOrders] = useState([]);
   const [selected, setSelected] = useState([]); // track selected customers
 
@@ -42,10 +43,9 @@ export function Tasks({ role }) {
     fetchPendingOrders();
   }, []);
 
-  const canMechanic = (role) =>
-    ["superadmin", "admin", "mechanic"].includes(role);
+  const canMechanic = (roles) => hasAnyRole(roles, ["SUPERADMIN", "ADMIN", "MECHANIC"]);
 
-  if (!canMechanic(role))
+  if (!canMechanic(roles))
     return (
       <Typography color="text.secondary">
         Your role cannot access the Task Board.

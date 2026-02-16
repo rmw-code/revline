@@ -37,8 +37,9 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useReactToPrint } from "react-to-print";
 import RevlineLogo from "./../../assets/revline_bg_cropped.png";
+import { hasAnyRole } from "../../utils";
 
-export function Orders({ role }) {
+export function Orders({ roles }) {
   const [services, setServices] = useState([]);
   const [motorcycles, setMotorcycles] = useState([]);
   const [mechanics, setMechanics] = useState([]);
@@ -58,8 +59,7 @@ export function Orders({ role }) {
   const printRef = useRef(null);
   const [createOpen, setCreateOpen] = useState(false);
 
-  const canCashier = (role) =>
-    ["superadmin", "admin", "cashier"].includes(role);
+  const canCashier = (roles) => hasAnyRole(roles, ["SUPERADMIN", "ADMIN", "CASHIER"]);
 
   useEffect(() => {
     // Fetch services from API on component mount
@@ -383,7 +383,7 @@ export function Orders({ role }) {
     documentTitle: "Invoice",
   });
 
-  if (!canCashier(role))
+  if (!canCashier(roles))
     return (
       <Typography color="text.secondary">
         Your role cannot access POS.
