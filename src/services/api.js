@@ -1,4 +1,4 @@
-import { loadLS, saveLS } from "../utils";
+import { loadLS } from "../utils";
 import { LS_KEYS } from "../enum";
 
 const BASE_URL = import.meta.env.VITE_API_URL;
@@ -25,13 +25,17 @@ export const request = async (endpoint, options = {}) => {
 
         // Handle authentication and authorization errors
         if (response.status === 401 || response.status === 403) {
-            // Clear the token from localStorage
-            saveLS(LS_KEYS.TOKEN, null);
+            // Clear auth-related state so App renders the login screen.
+            localStorage.removeItem(LS_KEYS.TOKEN);
+            localStorage.removeItem(LS_KEYS.SESSION);
 
-            // Only redirect if not already on login page to prevent infinite loop
-            if (!window.location.pathname.includes('/login')) {
-                window.location.href = "/login";
+            // App uses hash routing and login is the default when session is missing.
+            if (window.location.hash !== "#/" ) {
+                window.location.hash = "#/";
             }
+
+            // Force state reset for in-memory session values.
+            window.location.reload();
 
             // Throw error to prevent further processing
             throw new Error(response.status === 401 ? "Unauthorized - Please login again" : "Forbidden - Access denied");
