@@ -21,7 +21,7 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Typography
+  Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { getMotorcycles } from "../../services/motorcycleService";
@@ -52,7 +52,7 @@ export function Catalog({ roles }) {
   );
   */
   const [services, setServices] = useState([]);
-  const [bikeList, setBikeList] = useState([]); // Array of formatted strings for display
+  const [bikeList, setBikeList] = useState([]);
   const [motorcycleObjects, setMotorcycleObjects] = useState([]); // Full objects with IDs
   const [itemTypeList, setItemTypeList] = useState([]); // Array of type names for display
   const [serviceTypeObjects, setServiceTypeObjects] = useState([]); // Full objects with IDs
@@ -93,7 +93,7 @@ export function Catalog({ roles }) {
         if (data.content) {
           setMotorcycleObjects(data.content);
           const bikes = data.content.map(
-            (bike) => `${bike.brand} ${bike.model}`
+            (bike) => `${bike.brand} ${bike.model}`,
           );
           setBikeList(bikes);
         } else if (Array.isArray(data)) {
@@ -198,7 +198,7 @@ export function Catalog({ roles }) {
     const motorcycleIds = bikeArr
       .map((bikeStr) => {
         const motorcycle = motorcycleObjects.find(
-          (m) => `${m.brand} ${m.model}` === bikeStr
+          (m) => `${m.brand} ${m.model}` === bikeStr,
         );
         return motorcycle ? motorcycle.id : null;
       })
@@ -215,6 +215,18 @@ export function Catalog({ roles }) {
           allowMultiple: !!form.allowMultiple,
           serviceTypeId: serviceTypeId,
           motorcycleIds: motorcycleIds,
+          motorcycleList: motorcycleIds
+            .map((id) => {
+              const motorcycle = motorcycleObjects.find((m) => m.id === id);
+              return motorcycle
+                ? {
+                    id: motorcycle.id,
+                    brand: motorcycle.brand,
+                    model: motorcycle.model,
+                  }
+                : null;
+            })
+            .filter((m) => m !== null),
         });
       } else {
         await createService({
@@ -236,9 +248,16 @@ export function Catalog({ roles }) {
     }
   };
 
+
   const handleEdit = (s) => {
     // Normalize incoming service object into the dialog form shape
-    const bikeSelection = s.bike ?? (s.motorcycleList ? s.motorcycleList.map(m => `${m.brand} ${m.model}`) : []);
+    const bikeSelection =
+      s.bike ??
+      (s.motorcycleList
+        ? s.motorcycleList.map((m) => `${m.brand} ${m.model}`)
+        : []);
+
+    console.log(bikeSelection, "bikeSelection");
     setForm({
       id: s.id ?? "",
       name: s.name ?? "",
@@ -270,7 +289,7 @@ export function Catalog({ roles }) {
         alignItems="center"
         mb={2}
       >
-        <Typography variant="h6">Service Catalog</Typography>
+        <Typography variant="h6">Services & Parts Catalog</Typography>
         {canManageServices(roles) && (
           <Button
             startIcon={<AddIcon />}
@@ -278,23 +297,26 @@ export function Catalog({ roles }) {
             onClick={openAdd}
             sx={{ backgroundColor: "#18006a" }}
           >
-            New Service
+            New Service Or Part
           </Button>
         )}
       </Box>
 
-      <Grid container spacing={2} sx={{ mb: 2 }}>
+      <Grid spacing={2} sx={{ mb: 2 }}>
         <Grid xs={12} md={12}>
           <TextField
-            label="Search by services | bike | type | details"
+            label="Search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             variant="outlined"
             sx={{
-              width: { xs: '100%', md: '100%' },
+              width: { xs: "100%", md: "100%" },
               // minWidth: { md: '50%' },
-              '& .MuiInputBase-input': { fontSize: '1rem', padding: '12px 14px' },
-              '& .MuiInputLabel-root': { fontSize: '0.95rem' },
+              "& .MuiInputBase-input": {
+                fontSize: "1rem",
+                padding: "12px 14px",
+              },
+              "& .MuiInputLabel-root": { fontSize: "0.95rem" },
             }}
           />
         </Grid>
@@ -305,6 +327,7 @@ export function Catalog({ roles }) {
           <TableHead>
             <TableRow>
               <TableCell>Service</TableCell>
+              <TableCell>Part Number</TableCell>
               <TableCell>Price</TableCell>
               <TableCell>Qty</TableCell>
               <TableCell>Bike</TableCell>
@@ -319,8 +342,9 @@ export function Catalog({ roles }) {
             {filtered.map((s) => (
               <TableRow key={s.id} hover>
                 <TableCell>{s.name}</TableCell>
+                <TableCell>{s.name}</TableCell>
                 <TableCell>RM{s.price.toFixed(2)}</TableCell>
-                <TableCell>{s.quantity || 0}</TableCell>
+                <TableCell>{s.allowMultiple ? s.quantity : "-"}</TableCell>
                 <TableCell
                   title={formatMotorcycleList(s.motorcycleList)}
                   style={{
@@ -334,7 +358,7 @@ export function Catalog({ roles }) {
                 </TableCell>
                 <TableCell>{s.serviceTypeName || "-"}</TableCell>
                 <TableCell
-                  title={s.details || '-'}
+                  title={s.details || "-"}
                   style={{
                     maxWidth: 320,
                     whiteSpace: "nowrap",
@@ -342,7 +366,7 @@ export function Catalog({ roles }) {
                     overflow: "hidden",
                   }}
                 >
-                  {s.details && s.details.trim() ? s.details : '-'}
+                  {s.details && s.details.trim() ? s.details : "-"}
                 </TableCell>
                 {canManageServices(roles) && (
                   <TableCell align="right">
@@ -381,6 +405,53 @@ export function Catalog({ roles }) {
         <DialogContent dividers>
           <Stack flexDirection={"column"} spacing={2}>
             <Stack>
+              <Autocomplete
+                fullWidth
+                options={itemTypeList}
+                value={form?.type || null}
+                onChange={(event, newValue) => {
+                  setForm({ ...form, type: newValue || "" });
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Type"
+                    placeholder="Select type"
+                  />
+                )}
+                isOptionEqualToValue={(option, value) => option === value}
+              />
+            </Stack>
+            <Stack flexDirection={"row"} columnGap={2}>
+              <Autocomplete
+                multiple
+                fullWidth
+                options={bikeList}
+                value={form.bike ?? []}
+                onChange={(event, newValue) => {
+                  setForm({ ...form, bike: newValue });
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Bike"
+                    placeholder="Select bikes"
+                  />
+                )}
+                isOptionEqualToValue={(option, value) => option === value}
+              />
+
+              <TextField
+                label="Part Number"
+                fullWidth
+                disabled={form.type !== "Parts" && form.type !== "Used Parts"} // Enable only when type is "Parts" or "Used Parts"
+                value={form.partNumber || ""}
+                onChange={(e) =>
+                  setForm({ ...form, partNumber: e.target.value })
+                }
+              />
+            </Stack>
+            <Stack>
               <TextField
                 label="Name"
                 fullWidth
@@ -407,42 +478,7 @@ export function Catalog({ roles }) {
                 }
               />
             </Stack>
-            <Stack flexDirection={"row"} columnGap={2}>
-              <Autocomplete
-                multiple
-                fullWidth
-                options={bikeList}
-                value={form.bike ?? []}
-                onChange={(event, newValue) => {
-                  setForm({ ...form, bike: newValue });
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Bike"
-                    placeholder="Select bikes"
-                  />
-                )}
-                isOptionEqualToValue={(option, value) => option === value}
-              />
 
-              <Autocomplete
-                fullWidth
-                options={itemTypeList}
-                value={form?.type || null}
-                onChange={(event, newValue) => {
-                  setForm({ ...form, type: newValue || "" });
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Type"
-                    placeholder="Select type"
-                  />
-                )}
-                isOptionEqualToValue={(option, value) => option === value}
-              />
-            </Stack>
             <Stack>
               <TextField
                 label="Details"
@@ -457,7 +493,9 @@ export function Catalog({ roles }) {
                 control={
                   <Checkbox
                     checked={!!form.allowMultiple}
-                    onChange={(e) => setForm({ ...form, allowMultiple: e.target.checked })}
+                    onChange={(e) =>
+                      setForm({ ...form, allowMultiple: e.target.checked })
+                    }
                   />
                 }
                 label="Possible to have more than one"

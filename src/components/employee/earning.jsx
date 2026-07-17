@@ -48,7 +48,7 @@ export function Earning() {
               r &&
               (r.userId === s.id ||
                 r.userId === s.username ||
-                r.email === s.email)
+                r.email === s.email),
           ) || null;
       } else if (typeof all === "object") {
         // direct map keyed by id
@@ -65,7 +65,7 @@ export function Earning() {
                   r.userId === s.username ||
                   r.userId === s.email ||
                   r.email === s.email ||
-                  r.username === s.username)
+                  r.username === s.username),
             ) || null;
         }
       }
@@ -115,7 +115,7 @@ export function Earning() {
       doc.text(
         `Employee: ${session.name || session.username || session.email}`,
         14,
-        32
+        32,
       );
       doc.text(`Month: ${selectedMonth}`, 14, 40);
       const base = Number(salaryRecord.baseSalary || 0).toFixed(2);
@@ -133,7 +133,7 @@ export function Earning() {
           doc.text(
             `${d.title || "-"}: RM${Number(d.amount || 0).toFixed(2)}`,
             18,
-            y
+            y,
           );
           y += 8;
         });
@@ -148,7 +148,7 @@ export function Earning() {
           Number(salaryRecord.baseSalary || 0) - Number(totalDeductions)
         ).toFixed(2)}`,
         14,
-        y + 14
+        y + 14,
       );
 
       doc.save(`payslip-${session.id || "user"}-${selectedMonth}.pdf`);
@@ -184,36 +184,29 @@ export function Earning() {
 
         <Box display="flex" gap={12} alignItems="center">
           <Typography variant="subtitle2">Select Month</Typography>
-            <TextField
-              type="month"
-              value={month}
-              onChange={onMonthChange}
-              inputRef={monthInputRef}
-              inputProps={{ max: maxMonth }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start" sx={{ pointerEvents: "auto" }}>
-                    <IconButton
-                      size="small"
-                      onClick={openMonthPicker}
-                      edge="start"
-                      sx={{ cursor: "pointer" }}
-                      aria-label="Open month picker"
-                      title="Open month picker"
-                    >
-                      <CalendarTodayIcon fontSize="small" color="action" />
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
-          <Button
-            variant="contained"
-            startIcon={<DownloadIcon />}
-            onClick={() => downloadPayslip(month)}
-          >
-            Download Payslip
-          </Button>
+          <TextField
+            type="month"
+            value={month}
+            onChange={onMonthChange}
+            inputRef={monthInputRef}
+            inputProps={{ max: maxMonth }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start" sx={{ pointerEvents: "auto" }}>
+                  <IconButton
+                    size="small"
+                    onClick={openMonthPicker}
+                    edge="start"
+                    sx={{ cursor: "pointer" }}
+                    aria-label="Open month picker"
+                    title="Open month picker"
+                  >
+                    <CalendarTodayIcon fontSize="small" color="action" />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
         </Box>
 
         <Box className={styles.tableWrapper}>
@@ -237,14 +230,16 @@ export function Earning() {
                     <Table className={styles.leaveTable}>
                       <TableBody>
                         {salaryRecord.deductions.map((d, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell style={{ borderBottom: "none" }}>
+                          <TableRow key={idx} sx={{ padding: "0px" }}>
+                            <TableCell
+                              style={{ borderBottom: "none", padding: 0 }}
+                            >
                               {d.title || "-"}
                             </TableCell>
                             <TableCell
-                              style={{ borderBottom: "none" }}
+                              style={{ borderBottom: "none", padding: 0 }}
                             >{`RM${Number(d.amount || 0).toFixed(
-                              2
+                              2,
                             )}`}</TableCell>
                           </TableRow>
                         ))}
@@ -275,7 +270,7 @@ export function Earning() {
                         Number(salaryRecord.baseSalary || 0) -
                         (salaryRecord.deductions || []).reduce(
                           (s, d) => s + Number(d.amount || 0),
-                          0
+                          0,
                         )
                       ).toFixed(2)}`
                     : "-"}
@@ -289,8 +284,32 @@ export function Earning() {
                     <div>
                       <div>{salaryRecord.contact.address}</div>
                       <div>{salaryRecord.contact.phone}</div>
-                      <div>{salaryRecord.contact.emergencyContactName}</div>
-                      <div>{salaryRecord.contact.emergencyContactNo}</div>
+                    </div>
+                  ) : (
+                    "-"
+                  )}
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>Emergency Contact</TableCell>
+                <TableCell>
+                  {salaryRecord && salaryRecord.contact ? (
+                    <div>
+                      <div>
+                        {salaryRecord.contact.emergencyContactName} -{" "}
+                        {salaryRecord.contact.emergencyContactNo}
+                      </div>
+                    </div>
+                  ) : (
+                    "-"
+                  )}
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>Bank Account Details</TableCell>
+                <TableCell>
+                  {salaryRecord && salaryRecord.contact ? (
+                    <div>
                       <div>{salaryRecord.contact.bankName}</div>
                       <div>{salaryRecord.contact.bankAccountNumber}</div>
                     </div>
@@ -302,6 +321,13 @@ export function Earning() {
             </TableBody>
           </Table>
         </Box>
+        <Button
+          variant="contained"
+          startIcon={<DownloadIcon />}
+          onClick={() => downloadPayslip(month)}
+        >
+          Download Payslip
+        </Button>
       </Stack>
     </Paper>
   );
