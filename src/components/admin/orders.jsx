@@ -82,18 +82,24 @@ export function Orders({ roles }) {
     fetchServices();
   }, []);
 
+  const fetchOrders = async () => {
+    try {
+      const response = await getOrders({
+        page: 0,
+        size: 10,
+        ...(orderSearch && { customerName: orderSearch, phoneNumber: orderSearch, plateNumber: orderSearch }),
+        ...(dateFrom && { createAtFrom: dateFrom }),
+        ...(dateTo && { createAtTo: dateTo }),
+      });
+      setOrders(response.content || []);
+    } catch (error) {
+      console.error("Failed to fetch orders:", error);
+    }
+  };
+
   useEffect(() => {
-    // Fetch orders from API on component mount
-    const fetchOrders = async () => {
-      try {
-        const response = await getOrders({ page: 0, size: 10 });
-        setOrders(response.content || []);
-      } catch (error) {
-        console.error("Failed to fetch orders:", error);
-      }
-    };
     fetchOrders();
-  }, []);
+  }, [orderSearch, dateFrom, dateTo]);
 
   useEffect(() => {
     // Check localStorage for mechanics list first
@@ -387,27 +393,6 @@ export function Orders({ roles }) {
     }
   };
 
-  const filteredOrders = orders.filter((o) => {
-    const searchValue = orderSearch.trim().toLowerCase();
-    const customerName = (o.customerName || o.customer || "").toLowerCase();
-    const phoneNumber = (o.phoneNumber || "").toLowerCase();
-    const plateNumber = (o.plateNumber || "").toLowerCase();
-    const orderDateValue = o.createAt || o.createdAt || o.date || "";
-    const orderDate = orderDateValue
-      ? new Date(orderDateValue).toISOString().split("T")[0]
-      : "";
-
-    const matchesSearch =
-      !searchValue ||
-      customerName.includes(searchValue) ||
-      phoneNumber.includes(searchValue) ||
-      plateNumber.includes(searchValue);
-
-    const matchesFrom = !dateFrom || (orderDate && orderDate >= dateFrom);
-    const matchesTo = !dateTo || (orderDate && orderDate <= dateTo);
-
-    return matchesSearch && matchesFrom && matchesTo;
-  });
 
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
@@ -726,7 +711,7 @@ export function Orders({ roles }) {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredOrders.map((o) => (
+                {orders.map((o) => (
                   <TableRow key={o.id} hover>
                     <TableCell>
                       {o.createAt
@@ -803,7 +788,7 @@ export function Orders({ roles }) {
                     </TableCell>
                   </TableRow>
                 ))}
-                {filteredOrders.length === 0 && (
+                {orders.length === 0 && (
                   <TableRow>
                     <TableCell
                       colSpan={10}

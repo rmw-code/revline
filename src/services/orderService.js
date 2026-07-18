@@ -33,6 +33,8 @@ export const getOrders = async (filters = {}) => {
   if (filters.isPaid !== undefined) params.append("isPaid", filters.isPaid);
   if (filters.createAtFrom) params.append("createAtFrom", filters.createAtFrom);
   if (filters.createAtTo) params.append("createAtTo", filters.createAtTo);
+  if (filters.phoneNumber) params.append("phoneNumber", filters.phoneNumber);
+  if (filters.plateNumber) params.append("plateNumber", filters.plateNumber);
   if (filters.includeServices !== undefined) params.append("includeServices", filters.includeServices);
   
   params.append("page", filters.page ?? 0);
