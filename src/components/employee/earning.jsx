@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Paper,
@@ -9,16 +9,14 @@ import {
   TableRow,
   TextField,
   Typography,
-  InputAdornment,
   Button,
-  IconButton,
+  MenuItem,
 } from "@mui/material";
-import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import DownloadIcon from "@mui/icons-material/Download";
-import { jsPDF } from "jspdf";
-import styles from "./employee.module.scss";
+import { getMySalary, getMySalaryHistory, downloadSalaryHistory } from "../../services/employeeService";
 import { loadLS } from "../../utils";
 import { LS_KEYS } from "../../enum";
+import styles from "./employee.module.scss";
 
 export function Earning() {
   const [month, setMonth] = useState(() => {
@@ -27,136 +25,86 @@ export function Earning() {
   });
 
   const [session, setSession] = useState(null);
-  const [salaryRecord, setSalaryRecord] = useState(null);
-  const monthInputRef = useRef(null);
-
-  // compute max month (current month) to prevent selecting future months
-  const now = new Date();
-  const maxMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const [salaryData, setSalaryData] = useState(null);
+  const [historyMonths, setHistoryMonths] = useState([]);
+  const [selectedHistoryId, setSelectedHistoryId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const s = loadLS(LS_KEYS.SESSION, null);
     setSession(s);
 
-    const all = loadLS(LS_KEYS.EMPLOYEE_SALARIES, {});
-    let rec = null;
-    if (s && all) {
-      if (Array.isArray(all)) {
-        rec =
-          all.find(
-            (r) =>
-              r &&
-              (r.userId === s.id ||
-                r.userId === s.username ||
-                r.email === s.email),
-          ) || null;
-      } else if (typeof all === "object") {
-        // direct map keyed by id
-        if (all[s.id]) {
-          rec = all[s.id];
-        } else {
-          // search values for a matching userId or email/username
-          const vals = Object.values(all || {});
-          rec =
-            vals.find(
-              (r) =>
-                r &&
-                (r.userId === s.id ||
-                  r.userId === s.username ||
-                  r.userId === s.email ||
-                  r.email === s.email ||
-                  r.username === s.username),
-            ) || null;
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch salary history months
+        const historyRes = await getMySalaryHistory(0, 100);
+        if (historyRes && historyRes.content) {
+          setHistoryMonths(historyRes.content);
+          // Auto-select the first available month
+          if (historyRes.content.length > 0) {
+            const firstMonth = historyRes.content[0].month;
+            setMonth(firstMonth);
+            setSelectedHistoryId(historyRes.content[0].id);
+          }
         }
+
+        // Fetch current salary details
+        const salaryRes = await getMySalary();
+        if (salaryRes) {
+          setSalaryData(salaryRes);
+        }
+      } catch (error) {
+        console.error("Failed to fetch earning data", error);
+      } finally {
+        setLoading(false);
       }
+    };
+
+    if (s) {
+      fetchData();
     }
-    setSalaryRecord(rec && rec.published ? rec : null);
   }, []);
 
-  const onMonthChange = (e) => {
-    const v = e.target.value;
-    // clamp to maxMonth if user types a future month
-    if (v > maxMonth) {
-      setMonth(maxMonth);
-    } else {
-      setMonth(v);
-    }
-  };
-
-  const openMonthPicker = () => {
-    const el = monthInputRef.current;
-    if (!el) return;
-    try {
-      if (typeof el.showPicker === "function") {
-        el.showPicker();
-        return;
-      }
-    } catch (e) {}
-    try {
-      el.focus();
-      el.click();
-    } catch (e) {}
-  };
-
-  const downloadPayslip = (selectedMonth) => {
-    if (!session) {
-      alert("Please login to download payslip.");
-      return;
-    }
-    if (!salaryRecord) {
-      alert("No published salary record available to download.");
-      return;
-    }
-    try {
-      const doc = new jsPDF();
-      doc.setFontSize(14);
-      doc.text(`Payslip - ${selectedMonth}`, 14, 20);
-      doc.setFontSize(11);
-      doc.text(
-        `Employee: ${session.name || session.username || session.email}`,
-        14,
-        32,
-      );
-      doc.text(`Month: ${selectedMonth}`, 14, 40);
-      const base = Number(salaryRecord.baseSalary || 0).toFixed(2);
-      doc.text(`Base Salary: RM${base}`, 14, 50);
-
-      let y = 60;
-      doc.text(`Deductions:`, 14, y);
-      y += 6;
-      const deductions = salaryRecord.deductions || [];
-      if (deductions.length === 0) {
-        doc.text(`- None`, 18, y);
-        y += 8;
+  // When month changes, update the selected history record
+  useEffect(() => {
+    if (historyMonths.length > 0 && month) {
+      const matched = historyMonths.find((h) => h.month === month);
+      if (matched) {
+        setSelectedHistoryId(matched.id);
       } else {
-        deductions.forEach((d) => {
-          doc.text(
-            `${d.title || "-"}: RM${Number(d.amount || 0).toFixed(2)}`,
-            18,
-            y,
-          );
-          y += 8;
-        });
+        setSelectedHistoryId(null);
       }
+    }
+  }, [month, historyMonths]);
 
-      const totalDeductions = deductions
-        .reduce((s, d) => s + Number(d.amount || 0), 0)
-        .toFixed(2);
-      doc.text(`Total Deductions: RM${totalDeductions}`, 14, y + 4);
-      doc.text(
-        `Net Salary: RM${(
-          Number(salaryRecord.baseSalary || 0) - Number(totalDeductions)
-        ).toFixed(2)}`,
-        14,
-        y + 14,
-      );
+  const onMonthChange = (e) => {
+    setMonth(e.target.value);
+  };
 
-      doc.save(`payslip-${session.id || "user"}-${selectedMonth}.pdf`);
+  const downloadPayslip = async () => {
+    if (!selectedHistoryId) {
+      alert("No payslip available for the selected month.");
+      return;
+    }
+    try {
+      const blob = await downloadSalaryHistory(selectedHistoryId);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `payslip-${month}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("Failed to generate payslip", err);
-      alert("Failed to generate payslip.");
+      console.error("Failed to download payslip", err);
+      alert("Failed to download payslip. Please try again.");
     }
   };
+
+  // Find the selected month's history data for displaying amounts
+  const selectedHistory = historyMonths.find((h) => h.month === month) || null;
 
   if (!session)
     return (
@@ -174,161 +122,168 @@ export function Earning() {
         My Earning
       </Typography>
 
-      <Stack spacing={2}>
-        <Box display="flex" gap={12} alignItems="center">
-          <Typography variant="subtitle2">Employee</Typography>
-          <Typography variant="body1">
-            {session.name || session.username || session.email}
-          </Typography>
-        </Box>
+      {loading ? (
+        <Typography color="text.secondary">Loading...</Typography>
+      ) : (
+        <Stack spacing={2}>
+          <Box display="flex" gap={12} alignItems="center">
+            <Typography variant="subtitle2">Employee</Typography>
+            <Typography variant="body1">
+              {session.name || session.username || session.email}
+            </Typography>
+          </Box>
 
-        <Box display="flex" gap={12} alignItems="center">
-          <Typography variant="subtitle2">Select Month</Typography>
-          <TextField
-            type="month"
-            value={month}
-            onChange={onMonthChange}
-            inputRef={monthInputRef}
-            inputProps={{ max: maxMonth }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start" sx={{ pointerEvents: "auto" }}>
-                  <IconButton
-                    size="small"
-                    onClick={openMonthPicker}
-                    edge="start"
-                    sx={{ cursor: "pointer" }}
-                    aria-label="Open month picker"
-                    title="Open month picker"
-                  >
-                    <CalendarTodayIcon fontSize="small" color="action" />
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
-        </Box>
+          <Box display="flex" gap={12} alignItems="center">
+            <Typography variant="subtitle2">Select Month</Typography>
+            <TextField
+              select
+              value={month}
+              onChange={onMonthChange}
+              sx={{ minWidth: 200 }}
+            >
+              {historyMonths.length === 0 ? (
+                <MenuItem value={month} disabled>
+                  {month} (No history)
+                </MenuItem>
+              ) : (
+                historyMonths.map((h) => (
+                  <MenuItem key={h.id} value={h.month}>
+                    {h.month}
+                  </MenuItem>
+                ))
+              )}
+            </TextField>
+          </Box>
 
-        <Box className={styles.tableWrapper}>
-          <Table className={styles.leaveTable}>
-            <TableBody>
-              <TableRow>
-                <TableCell>Base Salary</TableCell>
-                <TableCell>
-                  {salaryRecord
-                    ? `RM${Number(salaryRecord.baseSalary || 0).toFixed(2)}`
-                    : "-"}
-                </TableCell>
-              </TableRow>
+          <Box className={styles.tableWrapper}>
+            <Table className={styles.leaveTable}>
+              <TableBody>
+                <TableRow>
+                  <TableCell>Base Salary</TableCell>
+                  <TableCell>
+                    {selectedHistory
+                      ? `RM${Number(selectedHistory.baseAmount || 0).toFixed(2)}`
+                      : salaryData
+                      ? `RM${Number(salaryData.baseSalary || 0).toFixed(2)}`
+                      : "-"}
+                  </TableCell>
+                </TableRow>
 
-              <TableRow>
-                <TableCell>Deductions</TableCell>
-                <TableCell>
-                  {salaryRecord &&
-                  salaryRecord.deductions &&
-                  salaryRecord.deductions.length > 0 ? (
-                    <Table className={styles.leaveTable}>
-                      <TableBody>
-                        {salaryRecord.deductions.map((d, idx) => (
-                          <TableRow key={idx} sx={{ padding: "0px" }}>
-                            <TableCell
-                              style={{ borderBottom: "none", padding: 0 }}
-                            >
-                              {d.title || "-"}
-                            </TableCell>
-                            <TableCell
-                              style={{ borderBottom: "none", padding: 0 }}
-                            >{`RM${Number(d.amount || 0).toFixed(
-                              2,
-                            )}`}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-              </TableRow>
+                <TableRow>
+                  <TableCell>EPF Contribution</TableCell>
+                  <TableCell>
+                    {selectedHistory
+                      ? `RM${Number(selectedHistory.epf || 0).toFixed(2)}`
+                      : "-"}
+                  </TableCell>
+                </TableRow>
 
-              <TableRow>
-                <TableCell>Total Deductions</TableCell>
-                <TableCell>
-                  {salaryRecord
-                    ? `RM${(salaryRecord.deductions || [])
-                        .reduce((s, d) => s + Number(d.amount || 0), 0)
-                        .toFixed(2)}`
-                    : "-"}
-                </TableCell>
-              </TableRow>
+                <TableRow>
+                  <TableCell>EIS Contribution</TableCell>
+                  <TableCell>
+                    {selectedHistory
+                      ? `RM${Number(selectedHistory.eis || 0).toFixed(2)}`
+                      : "-"}
+                  </TableCell>
+                </TableRow>
 
-              <TableRow>
-                <TableCell>Net Salary</TableCell>
-                <TableCell>
-                  {salaryRecord
-                    ? `RM${(
-                        Number(salaryRecord.baseSalary || 0) -
-                        (salaryRecord.deductions || []).reduce(
-                          (s, d) => s + Number(d.amount || 0),
-                          0,
-                        )
-                      ).toFixed(2)}`
-                    : "-"}
-                </TableCell>
-              </TableRow>
+                <TableRow>
+                  <TableCell>Net Salary</TableCell>
+                  <TableCell>
+                    {selectedHistory
+                      ? `RM${Number(selectedHistory.netAmount || 0).toFixed(2)}`
+                      : "-"}
+                  </TableCell>
+                </TableRow>
 
-              <TableRow>
-                <TableCell>Contact</TableCell>
-                <TableCell>
-                  {salaryRecord && salaryRecord.contact ? (
-                    <div>
-                      <div>{salaryRecord.contact.address}</div>
-                      <div>{salaryRecord.contact.phone}</div>
-                    </div>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Emergency Contact</TableCell>
-                <TableCell>
-                  {salaryRecord && salaryRecord.contact ? (
-                    <div>
-                      <div>
-                        {salaryRecord.contact.emergencyContactName} -{" "}
-                        {salaryRecord.contact.emergencyContactNo}
-                      </div>
-                    </div>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Bank Account Details</TableCell>
-                <TableCell>
-                  {salaryRecord && salaryRecord.contact ? (
-                    <div>
-                      <div>{salaryRecord.contact.bankName}</div>
-                      <div>{salaryRecord.contact.bankAccountNumber}</div>
-                    </div>
-                  ) : (
-                    "-"
-                  )}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<DownloadIcon />}
-          onClick={() => downloadPayslip(month)}
-        >
-          Download Payslip
-        </Button>
-      </Stack>
+                {/* Deductions from current salary setup */}
+                {salaryData && salaryData.salaryItems && salaryData.salaryItems.length > 0 && (
+                  <>
+                    <TableRow>
+                      <TableCell>Deductions</TableCell>
+                      <TableCell>
+                        <Table className={styles.leaveTable}>
+                          <TableBody>
+                            {salaryData.salaryItems
+                              .filter((item) => item.type === "DEDUCTION")
+                              .map((d, idx) => (
+                                <TableRow key={idx} sx={{ padding: "0px" }}>
+                                  <TableCell
+                                    style={{ borderBottom: "none", padding: 0 }}
+                                  >
+                                    {d.title || d.name || "-"}
+                                  </TableCell>
+                                  <TableCell
+                                    style={{ borderBottom: "none", padding: 0 }}
+                                  >{`RM${Number(d.amount || 0).toFixed(2)}`}</TableCell>
+                                </TableRow>
+                              ))}
+                          </TableBody>
+                        </Table>
+                      </TableCell>
+                    </TableRow>
+
+                    <TableRow>
+                      <TableCell>Allowances</TableCell>
+                      <TableCell>
+                        <Table className={styles.leaveTable}>
+                          <TableBody>
+                            {salaryData.salaryItems
+                              .filter((item) => item.type === "ALLOWANCE")
+                              .map((a, idx) => (
+                                <TableRow key={idx} sx={{ padding: "0px" }}>
+                                  <TableCell
+                                    style={{ borderBottom: "none", padding: 0 }}
+                                  >
+                                    {a.title || a.name || "-"}
+                                  </TableCell>
+                                  <TableCell
+                                    style={{ borderBottom: "none", padding: 0 }}
+                                  >{`RM${Number(a.amount || 0).toFixed(2)}`}</TableCell>
+                                </TableRow>
+                              ))}
+                          </TableBody>
+                        </Table>
+                      </TableCell>
+                    </TableRow>
+                  </>
+                )}
+
+                <TableRow>
+                  <TableCell>Uploaded At</TableCell>
+                  <TableCell>
+                    {selectedHistory && selectedHistory.uploadedAt
+                      ? new Date(selectedHistory.uploadedAt).toLocaleString()
+                      : "-"}
+                  </TableCell>
+                </TableRow>
+
+                <TableRow>
+                  <TableCell>Source</TableCell>
+                  <TableCell>
+                    {selectedHistory
+                      ? selectedHistory.isManualUploaded
+                        ? "Uploaded Payslip"
+                        : "Manual Entry"
+                      : "-"}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </Box>
+
+          <Button
+            variant="contained"
+            startIcon={<DownloadIcon />}
+            onClick={downloadPayslip}
+            disabled={!selectedHistoryId || !selectedHistory?.isManualUploaded}
+          >
+            {selectedHistory?.isManualUploaded
+              ? "Download Payslip"
+              : "No File Available"}
+          </Button>
+        </Stack>
+      )}
     </Paper>
   );
 }

@@ -103,6 +103,28 @@ export const createSalaryHistory = async (data) => {
  * @param {object} [data] - Optional salary data
  * @returns {Promise}
  */
+/**
+ * Get current user's salary history (JWT-based)
+ * @param {number} page
+ * @param {number} size
+ * @returns {Promise} - Paged salary history
+ */
+export const getMySalaryHistory = async (page = 0, size = 100) => {
+  return await request(`/sec/salary-history/my?page=${page}&size=${size}`, {
+    method: "GET"
+  });
+};
+
+/**
+ * Get current user's salary details (JWT-based)
+ * @returns {Promise} - SalaryDto with base salary, items, etc.
+ */
+export const getMySalary = async () => {
+  return await request("/sec/salary", {
+    method: "GET"
+  });
+};
+
 export const uploadSalaryHistory = async (userId, month, file, data = {}) => {
   const token = loadLS(LS_KEYS.TOKEN);
   const formData = new FormData();
