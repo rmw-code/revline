@@ -44,7 +44,7 @@ export const getUsersByRole = async (role = "", page = 0, size = 10) => {
  * @returns {Promise} - API response with created user data
  */
 export const createUser = async (userData) => {
-  return await request("/sec/users", {
+  return await request("/sec/addUser", {
     method: "POST",
     body: JSON.stringify(userData),
   });
