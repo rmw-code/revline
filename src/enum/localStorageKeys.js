@@ -9,4 +9,6 @@ export const LS_KEYS = {
   TOKEN: "bs_token",
   MOTORCYCLES: "bs_motorcycles",
   MECHANICS: "bs_mechanics",
+  BRANDS: "bs_brands",
+  CATALOG_TYPES: "bs_catalog_types",
 };

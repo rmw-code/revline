@@ -100,3 +100,14 @@ export const createOrder = async (orderData) => {
     body: JSON.stringify(orderData),
   });
 };
+
+/**
+ * Delete an order
+ * @param {number} orderId - Order ID
+ * @returns {Promise} - API response
+ */
+export const deleteOrder = async (orderId) => {
+  return await request(`/sec/orders/${orderId}`, {
+    method: "DELETE",
+  });
+};

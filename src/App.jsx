@@ -20,6 +20,7 @@ import {
   Tasks,
   TopBar,
   Users,
+  Settings,
 } from "./components";
 import { LS_KEYS } from "./enum";
 import { DEFAULT_SERVICES, DEFAULT_USERS } from "./local";
@@ -84,10 +85,11 @@ function TabsWrapper({ roles }) {
         <Tab label="Inventory" disabled />
         <Tab label="Tasks" />
         <Tab label="Leave" />
-        <Tab label="My Earning" />
+        <Tab label="My Earnings" />
         <Tab label="Attendance" />
         <Tab label="Employees" />
         <Tab label="Users" />
+        <Tab label="Settings" />
       </Tabs>
       <Box sx={{ mt: 2 }}>
         {tab === 0 && <Catalog roles={roles} />}
@@ -99,6 +101,7 @@ function TabsWrapper({ roles }) {
         {tab === 6 && <Attendance />}
         {tab === 7 && <EmployeeAdmin roles={roles} />}
         {tab === 8 && <Users roles={roles} />}
+        {tab === 9 && <Settings roles={roles} />}
       </Box>
     </Box>
   );

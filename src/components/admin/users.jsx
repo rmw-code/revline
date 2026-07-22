@@ -1,5 +1,6 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import PeopleIcon from "@mui/icons-material/People";
 import {
     Alert,
@@ -14,6 +15,7 @@ import {
     Grid,
     IconButton,
     InputLabel,
+    Menu,
     MenuItem,
     Paper,
     Select,
@@ -37,6 +39,8 @@ export function Users({ roles }) {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [form, setForm] = useState({
     id: "",
     name: "",
@@ -149,7 +153,7 @@ export function Users({ roles }) {
             <TableCell>Username</TableCell>
             <TableCell>Email</TableCell>
             <TableCell>Roles</TableCell>
-            <TableCell align="right">Actions</TableCell>
+            <TableCell align="center" sx={{ width: 50 }}>Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -169,12 +173,15 @@ export function Users({ roles }) {
                   />
                 ))}
               </TableCell>
-              <TableCell align="right">
-                <IconButton size="small" onClick={() => edit(u)}>
-                  <EditIcon fontSize="small" />
-                </IconButton>
-                <IconButton size="small" onClick={() => remove(u.id)}>
-                  <DeleteIcon fontSize="small" />
+              <TableCell align="center">
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    setMenuAnchor(e.currentTarget);
+                    setSelectedUser(u);
+                  }}
+                >
+                  <MoreVertIcon fontSize="small" />
                 </IconButton>
               </TableCell>
             </TableRow>
@@ -182,6 +189,35 @@ export function Users({ roles }) {
         </TableBody>
         </Table>
       </div>
+
+      {/* Actions Menu */}
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={() => {
+          setMenuAnchor(null);
+          setSelectedUser(null);
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            edit(selectedUser);
+            setMenuAnchor(null);
+          }}
+        >
+          <EditIcon fontSize="small" sx={{ mr: 1 }} />
+          Edit
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            remove(selectedUser.id);
+            setMenuAnchor(null);
+          }}
+        >
+          <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
+          Delete
+        </MenuItem>
+      </Menu>
 
       <Dialog
         open={open}

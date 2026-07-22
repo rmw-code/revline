@@ -1,6 +1,5 @@
 import AddIcon from "@mui/icons-material/Add";
-import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import {
   Autocomplete,
   Box,
@@ -11,6 +10,8 @@ import {
   DialogTitle,
   Grid,
   IconButton,
+  Menu,
+  MenuItem,
   Paper,
   Stack,
   Checkbox,
@@ -33,6 +34,8 @@ import {
 } from "../../services/serviceService";
 import { getServiceTypes } from "../../services/serviceTypesService";
 import { hasAnyRole } from "../../utils";
+import { loadLS } from "../../utils/loadLS";
+import { LS_KEYS } from "../../enum/localStorageKeys";
 import styles from "./admin.module.scss";
 
 const canManageServices = (roles) => hasAnyRole(roles, ["SUPERADMIN", "ADMIN"]);
@@ -56,9 +59,15 @@ export function Catalog({ roles }) {
   const [motorcycleObjects, setMotorcycleObjects] = useState([]); // Full objects with IDs
   const [itemTypeList, setItemTypeList] = useState([]); // Array of type names for display
   const [serviceTypeObjects, setServiceTypeObjects] = useState([]); // Full objects with IDs
+  const [localCatalogTypes] = useState(loadLS(LS_KEYS.CATALOG_TYPES, []));
+  const [brandList, setBrandList] = useState(() =>
+    (loadLS(LS_KEYS.BRANDS, []) || []).map((brand) => brand.name).filter(Boolean),
+  );
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+  const [selectedService, setSelectedService] = useState(null);
   const [form, setForm] = useState({
     id: "",
     name: "",
@@ -69,6 +78,8 @@ export function Catalog({ roles }) {
     allowMultiple: false,
     bike: [],
     type: "",
+    brand: "",
+    partNumber: "",
   });
 
   /*
@@ -84,6 +95,13 @@ export function Catalog({ roles }) {
     });
   }, [services, q]);
   */
+
+  useEffect(() => {
+    const storedBrands = (loadLS(LS_KEYS.BRANDS, []) || [])
+      .map((brand) => brand.name)
+      .filter(Boolean);
+    setBrandList(storedBrands);
+  }, []);
 
   // Fetch motorcycles on component mount
   useEffect(() => {
@@ -116,10 +134,13 @@ export function Catalog({ roles }) {
         if (Array.isArray(data)) {
           setServiceTypeObjects(data);
           const types = data.map((type) => type.name);
-          setItemTypeList(types);
+          setItemTypeList([...new Set([...types, ...localCatalogTypes])]);
+        } else {
+          setItemTypeList(localCatalogTypes);
         }
       } catch (error) {
         console.error("Failed to fetch service types", error);
+        setItemTypeList(localCatalogTypes);
       }
     };
     fetchServiceTypes();
@@ -129,7 +150,7 @@ export function Catalog({ roles }) {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const data = await getServices(q, 0, 100);
+        const data = await getServices(q, 0, 1000);
         // Assuming response is Page<Service> or List<Service>.
         // If it's a Page object (content, totalElements, etc.), we extract content.
         // Adjust based on typical Spring Boot Page response or the actual return.
@@ -162,6 +183,8 @@ export function Catalog({ roles }) {
       allowMultiple: false,
       bike: [],
       type: "",
+      brand: "",
+      partNumber: "",
     });
     setEditing(false);
   };
@@ -205,16 +228,22 @@ export function Catalog({ roles }) {
       .filter((id) => id !== null);
 
     try {
+      const servicePayload = {
+        name: form.name,
+        price: Number(form.price),
+        brand: form.brand || null,
+        partNumber: form.partNumber || null,
+        details: form.details,
+        // quantity: Number(form.quantity) || 0,
+        allowMultiple: !!form.allowMultiple,
+        serviceTypeId: serviceTypeId,
+        serviceTypeName: form.type,
+        motorcycleIds: motorcycleIds,
+      };
+
       if (editing) {
         await updateService(form.id, {
-          name: form.name,
-          price: Number(form.price),
-          details: form.details,
-          // keep quantity for backend compatibility and also send allowMultiple
-          quantity: Number(form.quantity) || 0,
-          allowMultiple: !!form.allowMultiple,
-          serviceTypeId: serviceTypeId,
-          motorcycleIds: motorcycleIds,
+          ...servicePayload,
           motorcycleList: motorcycleIds
             .map((id) => {
               const motorcycle = motorcycleObjects.find((m) => m.id === id);
@@ -229,15 +258,7 @@ export function Catalog({ roles }) {
             .filter((m) => m !== null),
         });
       } else {
-        await createService({
-          name: form.name,
-          price: Number(form.price),
-          details: form.details,
-          quantity: Number(form.quantity) || 0,
-          allowMultiple: !!form.allowMultiple,
-          serviceTypeId: serviceTypeId,
-          motorcycleIds: motorcycleIds,
-        });
+        await createService(servicePayload);
       }
 
       await refreshServices();
@@ -248,7 +269,6 @@ export function Catalog({ roles }) {
     }
   };
 
-
   const handleEdit = (s) => {
     // Normalize incoming service object into the dialog form shape
     const bikeSelection =
@@ -257,11 +277,12 @@ export function Catalog({ roles }) {
         ? s.motorcycleList.map((m) => `${m.brand} ${m.model}`)
         : []);
 
-    console.log(bikeSelection, "bikeSelection");
     setForm({
       id: s.id ?? "",
       name: s.name ?? "",
       price: s.price ?? 0,
+      brand: s.brand || "",
+      partNumber: s.partNumber || "",
       details: s.details ?? "",
       quantity: s.quantity ?? 0,
       allowMultiple: !!s.allowMultiple,
@@ -281,6 +302,16 @@ export function Catalog({ roles }) {
     }
   };
 
+  const handleOpenActions = (event, service) => {
+    setMenuAnchorEl(event.currentTarget);
+    setSelectedService(service);
+  };
+
+  const handleCloseActions = () => {
+    setMenuAnchorEl(null);
+    setSelectedService(null);
+  };
+
   return (
     <Paper variant="outlined" sx={{ p: 2 }} className={styles.catalogContainer}>
       <Box
@@ -297,13 +328,13 @@ export function Catalog({ roles }) {
             onClick={openAdd}
             sx={{ backgroundColor: "#18006a" }}
           >
-            New Service Or Part
+            New Service/Part
           </Button>
         )}
       </Box>
 
       <Grid spacing={2} sx={{ mb: 2 }}>
-        <Grid xs={12} md={12}>
+        <Grid>
           <TextField
             label="Search"
             value={q}
@@ -326,12 +357,12 @@ export function Catalog({ roles }) {
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>Service</TableCell>
-              <TableCell>Part Number</TableCell>
+              <TableCell>Service/Part</TableCell>
               <TableCell>Price</TableCell>
-              <TableCell>Qty</TableCell>
-              <TableCell>Bike</TableCell>
               <TableCell>Type</TableCell>
+              <TableCell>Part Details</TableCell>
+              {/* <TableCell>Qty</TableCell> */}
+              <TableCell>Applicable Bikes</TableCell>
               <TableCell>Details</TableCell>
               {canManageServices(roles) && (
                 <TableCell align="right">Actions</TableCell>
@@ -342,9 +373,13 @@ export function Catalog({ roles }) {
             {filtered.map((s) => (
               <TableRow key={s.id} hover>
                 <TableCell>{s.name}</TableCell>
-                <TableCell>{s.name}</TableCell>
                 <TableCell>RM{s.price.toFixed(2)}</TableCell>
-                <TableCell>{s.allowMultiple ? s.quantity : "-"}</TableCell>
+                <TableCell>{s.serviceTypeName || "-"}</TableCell>
+                <TableCell>
+                  <div>{s.brand || "-"}</div>
+                  <div>{s.partNumber || "-"}</div>
+                </TableCell>
+                {/* <TableCell>{s.allowMultiple ? s.quantity : "-"}</TableCell> */}
                 <TableCell
                   title={formatMotorcycleList(s.motorcycleList)}
                   style={{
@@ -356,7 +391,6 @@ export function Catalog({ roles }) {
                 >
                   {formatMotorcycleList(s.motorcycleList)}
                 </TableCell>
-                <TableCell>{s.serviceTypeName || "-"}</TableCell>
                 <TableCell
                   title={s.details || "-"}
                   style={{
@@ -370,12 +404,32 @@ export function Catalog({ roles }) {
                 </TableCell>
                 {canManageServices(roles) && (
                   <TableCell align="right">
-                    <IconButton size="small" onClick={() => handleEdit(s)}>
-                      <EditIcon fontSize="small" />
+                    <IconButton size="small" onClick={(event) => handleOpenActions(event, s)}>
+                      <MoreVertIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" onClick={() => handleDelete(s.id)}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+                    <Menu
+                      anchorEl={menuAnchorEl}
+                      open={Boolean(menuAnchorEl) && selectedService?.id === s.id}
+                      onClose={handleCloseActions}
+                    >
+                      <MenuItem
+                        onClick={() => {
+                          handleCloseActions();
+                          handleEdit(s);
+                        }}
+                      >
+                        Edit
+                      </MenuItem>
+                      <MenuItem
+                        onClick={() => {
+                          handleCloseActions();
+                          handleDelete(s.id);
+                        }}
+                        sx={{ color: "error.main" }}
+                      >
+                        Delete
+                      </MenuItem>
+                    </Menu>
                   </TableCell>
                 )}
               </TableRow>
@@ -401,7 +455,7 @@ export function Catalog({ roles }) {
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle>{editing ? "Edit Service" : "Add Service"}</DialogTitle>
+        <DialogTitle>{editing ? "Edit Service/Part" : "Add Service/Part"}</DialogTitle>
         <DialogContent dividers>
           <Stack flexDirection={"column"} spacing={2}>
             <Stack>
@@ -422,7 +476,7 @@ export function Catalog({ roles }) {
                 isOptionEqualToValue={(option, value) => option === value}
               />
             </Stack>
-            <Stack flexDirection={"row"} columnGap={2}>
+            <Stack>
               <Autocomplete
                 multiple
                 fullWidth
@@ -440,16 +494,6 @@ export function Catalog({ roles }) {
                 )}
                 isOptionEqualToValue={(option, value) => option === value}
               />
-
-              <TextField
-                label="Part Number"
-                fullWidth
-                disabled={form.type !== "Parts" && form.type !== "Used Parts"} // Enable only when type is "Parts" or "Used Parts"
-                value={form.partNumber || ""}
-                onChange={(e) =>
-                  setForm({ ...form, partNumber: e.target.value })
-                }
-              />
             </Stack>
             <Stack>
               <TextField
@@ -461,6 +505,34 @@ export function Catalog({ roles }) {
             </Stack>
             <Stack flexDirection={"row"} columnGap={2}>
               <TextField
+                label="Part Number"
+                fullWidth
+                disabled={form.type !== "Parts" && form.type !== "Used Parts"} // Enable only when type is "Parts" or "Used Parts"
+                value={form.partNumber || ""}
+                onChange={(e) =>
+                  setForm({ ...form, partNumber: e.target.value })
+                }
+              />
+              <Autocomplete
+                fullWidth
+                options={brandList}
+                value={form.brand || null}
+                disabled={form.type !== "Parts" && form.type !== "Used Parts"} // Enable only when type is "Parts" or "Used Parts"
+                onChange={(event, newValue) => {
+                  setForm({ ...form, brand: newValue || "" });
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Brand"
+                    placeholder="Select brand"
+                  />
+                )}
+                isOptionEqualToValue={(option, value) => option === value}
+              />
+            </Stack>
+            <Stack flexDirection={"row"} columnGap={2}>
+              <TextField
                 label="Price"
                 fullWidth
                 value={form.price}
@@ -468,7 +540,7 @@ export function Catalog({ roles }) {
                   setForm({ ...form, price: Number(e.target.value) })
                 }
               />
-              <TextField
+              {/* <TextField
                 label="Quantity"
                 type="number"
                 fullWidth
@@ -476,11 +548,13 @@ export function Catalog({ roles }) {
                 onChange={(e) =>
                   setForm({ ...form, quantity: Number(e.target.value) })
                 }
-              />
+              /> */}
             </Stack>
 
             <Stack>
               <TextField
+              multiline
+                rows={3}
                 label="Details"
                 fullWidth
                 value={form.details}

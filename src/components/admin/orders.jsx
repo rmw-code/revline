@@ -1,7 +1,5 @@
 import AddIcon from "@mui/icons-material/Add";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
-import ScreenShareOutlinedIcon from "@mui/icons-material/ScreenShareOutlined";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import {
   Autocomplete,
   Box,
@@ -13,6 +11,9 @@ import {
   DialogTitle,
   Divider,
   Grid,
+  IconButton,
+  Menu,
+  MenuItem,
   Paper,
   Stack,
   Table,
@@ -21,7 +22,7 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Typography
+  Typography,
 } from "@mui/material";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -31,6 +32,7 @@ import { LS_KEYS } from "../../enum/localStorageKeys";
 import { getMotorcycles } from "../../services/motorcycleService";
 import {
   createOrder as createOrderService,
+  deleteOrder as deleteOrderService,
   getOrderById,
   getOrders,
   markOrderAsPaid,
@@ -40,7 +42,8 @@ import { getUsersByRole } from "../../services/userServices";
 import { hasAnyRole } from "../../utils";
 import { loadLS } from "../../utils/loadLS";
 import { saveLS } from "../../utils/saveLS";
-import RevlineLogo from "./../../assets/revline_bg_cropped.png";
+import RevlineLogo from "./../../assets/RMW-transparent.png";
+import RevlineFullLogo from "./../../assets/RMW.png";
 import styles from "./admin.module.scss";
 
 export function Orders({ roles }) {
@@ -63,11 +66,15 @@ export function Orders({ roles }) {
   const [orderSearch, setOrderSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [createErrors, setCreateErrors] = useState([]);
   const printRef = useRef(null);
   const [createOpen, setCreateOpen] = useState(false);
 
   const canCashier = (roles) =>
     hasAnyRole(roles, ["SUPERADMIN", "ADMIN", "CASHIER"]);
+  const canDeleteOrders = hasAnyRole(roles, ["SUPERADMIN"]);
 
   useEffect(() => {
     // Fetch services from API on component mount
@@ -86,8 +93,12 @@ export function Orders({ roles }) {
     try {
       const response = await getOrders({
         page: 0,
-        size: 10,
-        ...(orderSearch && { customerName: orderSearch, phoneNumber: orderSearch, plateNumber: orderSearch }),
+        size: 1000,
+        ...(orderSearch && {
+          customerName: orderSearch,
+          phoneNumber: orderSearch,
+          plateNumber: orderSearch,
+        }),
         ...(dateFrom && { createAtFrom: dateFrom }),
         ...(dateTo && { createAtTo: dateTo }),
       });
@@ -173,7 +184,23 @@ export function Orders({ roles }) {
     });
   };
   const createOrder = async () => {
-    if (!customer || selected.length === 0) return;
+    const errors = [];
+
+    if (!customer.trim()) errors.push("Customer name is required.");
+    if (!phoneNo.trim()) errors.push("Phone number is required.");
+    if (!platNo.trim()) errors.push("Plate number is required.");
+    if (!mileage.trim()) errors.push("Mileage is required.");
+    if (!bike.trim()) errors.push("Bike is required.");
+    if (!mechanic.trim()) errors.push("Mechanic is required.");
+    if (selected.length === 0)
+      errors.push("Please select at least one service.");
+
+    if (errors.length > 0) {
+      setCreateErrors(errors);
+      return false;
+    }
+
+    setCreateErrors([]);
 
     try {
       const items = selected.map((id) => services.find((s) => s.id === id));
@@ -184,6 +211,7 @@ export function Orders({ roles }) {
           price: item.price,
           details: item.details || "",
           quantity: qty,
+          type: item.type || "",
           lineTotal: Number((item.price * qty).toFixed(2)),
         };
       });
@@ -225,9 +253,11 @@ export function Orders({ roles }) {
       setMechanic("");
       setSelectedMechanic(null);
       setSelected([]);
+      return true;
     } catch (error) {
       console.error("Failed to create order:", error);
       alert("Failed to create order. Please try again.");
+      return false;
     }
   };
 
@@ -243,7 +273,7 @@ export function Orders({ roles }) {
       // 🔹 Watermark (centered, low opacity)
       doc.setGState(new doc.GState({ opacity: 0.08 }));
       const wmSize = 160; // adjust watermark size
-      const wmX = (pageWidth - wmSize) / 2;
+      const wmX = (pageWidth - wmSize) / 3;
       const wmY = (pageHeight - wmSize) / 3;
       doc.addImage(RevlineLogo, "PNG", wmX, wmY, wmSize, wmSize);
 
@@ -290,13 +320,13 @@ export function Orders({ roles }) {
       const marginRight = 14;
       const logoX = pageWidth - logoWidth - marginRight;
       const logoY = 14;
-      doc.addImage(RevlineLogo, "PNG", logoX, logoY, logoWidth, logoHeight);
+      doc.addImage(RevlineFullLogo, "PNG", logoX, logoY, logoWidth, logoHeight);
 
       // Address under logo
       const address = [
-        "E-G-12, Pangsapuri Putra Raya",
-        "Jalan PP 32, Seksyen 2",
-        "Taman Pinggiran Putra",
+        "No 140",
+        "Jalan Lestari Perdana 7/4",
+        "Taman Lestari Perdana",
         "43300 Seri Kembangan, Selangor",
         "Business Reg. No: 202503190421 (003752485-M)",
       ];
@@ -312,12 +342,15 @@ export function Orders({ roles }) {
       const serviceItems = fullOrder.services || fullOrder.items || [];
       const rows = serviceItems.map((i) => [
         i.name,
+        i.type,
+        i.brand,
+        i.quantity,
         i.details || "-",
         `RM${i.price.toFixed(2)}`,
       ]);
 
       autoTable(doc, {
-        head: [["Service & Product", "Details", "Price"]],
+        head: [["Service & Parts", "Type", "Brand", "Quantity", "Price"]],
         body: rows,
         startY: tableStartY,
         styles: { font: "helvetica", fontSize: 10, cellPadding: 6 }, // 🔹 more spacing
@@ -371,8 +404,6 @@ export function Orders({ roles }) {
 
       // Update local state with the complete order data
       setOrders((prev) => prev.map((o) => (o.id === id ? updatedOrder : o)));
-
-      console.log(`Order ${id} marked as paid`);
     } catch (error) {
       console.error("Failed to mark order as paid:", error);
       alert("Failed to mark order as paid. Please try again.");
@@ -393,6 +424,28 @@ export function Orders({ roles }) {
     }
   };
 
+  const handleOpenActions = (event, order) => {
+    setMenuAnchorEl(event.currentTarget);
+    setSelectedOrder(order);
+  };
+
+  const handleCloseActions = () => {
+    setMenuAnchorEl(null);
+    setSelectedOrder(null);
+  };
+
+  const handleDeleteOrder = async (id) => {
+    if (!window.confirm("Delete this order?")) return;
+
+    try {
+      await deleteOrderService(id);
+      await fetchOrders();
+      handleCloseActions();
+    } catch (error) {
+      console.error("Failed to delete order:", error);
+      alert("Failed to delete order. Please try again.");
+    }
+  };
 
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
@@ -408,7 +461,6 @@ export function Orders({ roles }) {
 
   return (
     <Grid width={"100%"} container spacing={2}>
-
       {/* Create Order Dialog */}
       <Dialog
         open={createOpen}
@@ -419,6 +471,29 @@ export function Orders({ roles }) {
         <DialogTitle>Create Order</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2}>
+            {createErrors.length > 0 && (
+              <Box
+                sx={{
+                  p: 1.5,
+                  borderRadius: 1,
+                  bgcolor: "#fff4f4",
+                  border: "1px solid #f5c2c7",
+                }}
+              >
+                <Typography color="error" variant="body2">
+                  Please fix the following issues before creating the order:
+                </Typography>
+                <ul style={{ margin: "6px 0 0 16px", padding: 0 }}>
+                  {createErrors.map((error) => (
+                    <li key={error}>
+                      <Typography color="error" variant="body2">
+                        {error}
+                      </Typography>
+                    </li>
+                  ))}
+                </ul>
+              </Box>
+            )}
             <Stack
               flexDirection={{ xs: "column", md: "row" }}
               columnGap={2}
@@ -627,8 +702,10 @@ export function Orders({ roles }) {
           <Button
             variant="contained"
             onClick={async () => {
-              await createOrder();
-              setCreateOpen(false);
+              const success = await createOrder();
+              if (success) {
+                setCreateOpen(false);
+              }
             }}
           >
             Create & Show
@@ -639,7 +716,12 @@ export function Orders({ roles }) {
       {/* Recent Orders remains same */}
       <Grid item xs={12} md={12} width={"100%"}>
         <Paper variant="outlined" sx={{ p: 2 }}>
-          <Grid container justifyContent="space-between" alignItems="center" mb={2}>
+          <Grid
+            container
+            justifyContent="space-between"
+            alignItems="center"
+            mb={2}
+          >
             <Typography variant="h6" gutterBottom>
               Recent Orders
             </Typography>
@@ -699,9 +781,8 @@ export function Orders({ roles }) {
               <TableHead>
                 <TableRow>
                   <TableCell>Date</TableCell>
-                  <TableCell>Customer</TableCell>
-                  <TableCell>Phone No</TableCell>
-                  <TableCell>Plat No</TableCell>
+                  <TableCell>Customer Details</TableCell>
+                  <TableCell>Plate No</TableCell>
                   <TableCell>Mileage</TableCell>
                   <TableCell>Bike</TableCell>
                   <TableCell>Person In Charge</TableCell>
@@ -718,10 +799,14 @@ export function Orders({ roles }) {
                         ? new Date(o.createAt).toLocaleDateString()
                         : "-"}
                     </TableCell>
-                    <TableCell>{o.customerName || o.customer}</TableCell>
-                    <TableCell>{o.phoneNumber || "-"}</TableCell>
+                    <TableCell>
+                      <div>{o.customerName || o.customer}</div>
+                      <div style={{ fontSize: "0.875rem", color: "#666" }}>
+                        {o.phoneNumber || "-"}
+                      </div>
+                    </TableCell>
                     <TableCell>{o.plateNumber || "-"}</TableCell>
-                    <TableCell>{o.mileage || "-"}</TableCell>
+                    <TableCell>{`${o.mileage}km` || "-"}</TableCell>
                     <TableCell>{o.motorcycleName || o.bike}</TableCell>
                     <TableCell>{o.mechanicName || o.mechanic}</TableCell>
                     <TableCell>
@@ -752,39 +837,57 @@ export function Orders({ roles }) {
                       </div>
                     </TableCell>
                     <TableCell align="right">
-                      <Box
-                        sx={{
-                          display: "flex",
-                          gap: 1,
-                          justifyContent: "flex-end",
-                          alignItems: "center",
-                          flexWrap: "nowrap",
-                        }}
+                      <IconButton
+                        size="small"
+                        onClick={(event) => handleOpenActions(event, o)}
                       >
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => setDisplay(o.id)}
+                        <MoreVertIcon fontSize="small" />
+                      </IconButton>
+                      <Menu
+                        anchorEl={menuAnchorEl}
+                        open={
+                          Boolean(menuAnchorEl) && selectedOrder?.id === o.id
+                        }
+                        onClose={handleCloseActions}
+                      >
+                        <MenuItem
+                          onClick={() => {
+                            handleCloseActions();
+                            setDisplay(o.id);
+                          }}
                         >
-                          <ScreenShareOutlinedIcon />
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => downloadPDF(o)}
+                          View
+                        </MenuItem>
+                        <MenuItem
+                          onClick={() => {
+                            handleCloseActions();
+                            downloadPDF(o);
+                          }}
                         >
-                          <PictureAsPdfIcon />
-                        </Button>
+                          Download PDF
+                        </MenuItem>
                         {!o.isPaid && !o.paid && (
-                          <Button
-                            size="small"
-                            variant="contained"
-                            onClick={() => markPaid(o.id)}
+                          <MenuItem
+                            onClick={() => {
+                              handleCloseActions();
+                              markPaid(o.id);
+                            }}
                           >
-                            <CheckCircleIcon />{" "}
-                          </Button>
+                            Mark as Paid
+                          </MenuItem>
                         )}
-                      </Box>
+                        {canDeleteOrders && (
+                          <MenuItem
+                            onClick={() => {
+                              handleCloseActions();
+                              handleDeleteOrder(o.id);
+                            }}
+                            sx={{ color: "error.main" }}
+                          >
+                            Delete
+                          </MenuItem>
+                        )}
+                      </Menu>
                     </TableCell>
                   </TableRow>
                 ))}

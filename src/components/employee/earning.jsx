@@ -109,9 +109,9 @@ export function Earning() {
   if (!session)
     return (
       <Paper variant="outlined" sx={{ p: 2 }} className={styles.leaveContainer}>
-        <Typography variant="h6">My Earning</Typography>
+        <Typography variant="h6">My Earnings</Typography>
         <Typography color="text.secondary">
-          Please login to view your earning.
+          Please login to view your earnings.
         </Typography>
       </Paper>
     );
@@ -119,7 +119,7 @@ export function Earning() {
   return (
     <Paper variant="outlined" sx={{ p: 2 }} className={styles.leaveContainer}>
       <Typography variant="h6" gutterBottom>
-        My Earning
+        My Earnings
       </Typography>
 
       {loading ? (

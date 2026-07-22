@@ -19,6 +19,7 @@ import LeavesTab from "./tabs/LeavesTab";
 import RoleTab from "./tabs/RoleTab";
 import SalaryTab from "./tabs/SalaryTab";
 
+
 export function EmployeeAdmin({ roles }) {
   // Removed users state
   const [employees, setEmployees] = useState([]); // employee data from API
@@ -104,6 +105,7 @@ export function EmployeeAdmin({ roles }) {
       // Prepare data for API
       const details = {
         name: form.contact?.fullName || '',
+        email: form.contact?.email || '',
         alternateEmail: form.contact?.altEmail || '',
         icNo: form.contact?.icNumber || '',
         dob: formatDateForApi(form.contact?.birthDate || ''),
