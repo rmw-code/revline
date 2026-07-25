@@ -10,8 +10,10 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControl,
   Grid,
   IconButton,
+  InputLabel,
   Menu,
   MenuItem,
   Paper,
@@ -743,24 +745,92 @@ export function Orders({ roles }) {
               />
             </Grid>
             <Grid item xs={6} md={3}>
-              <TextField
-                label="From Date"
-                type="date"
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-              />
+              <FormControl fullWidth>
+                <InputLabel
+                  shrink
+                  htmlFor="from-date-input"
+                  sx={{
+                    backgroundColor: '#fff',
+                    paddingX: '4px',
+                    marginLeft: '-4px',
+                  }}
+                >
+                  From Date
+                </InputLabel>
+                <Box
+                  component="input"
+                  id="from-date-input"
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  sx={{
+                    width: '100%',
+                    padding: '16.5px 14px',
+                    fontSize: '1rem',
+                    fontFamily: 'inherit',
+                    border: '1px solid rgba(0, 0, 0, 0.23)',
+                    borderRadius: '4px',
+                    backgroundColor: '#fff',
+                    color: '#000',
+                    colorScheme: 'light',
+                    '&:hover': {
+                      borderColor: 'rgba(0, 0, 0, 0.87)',
+                    },
+                    '&:focus': {
+                      outline: 'none',
+                      borderColor: '#1976d2',
+                      borderWidth: '2px',
+                    },
+                    '&::-webkit-calendar-picker-indicator': {
+                      cursor: 'pointer',
+                    },
+                  }}
+                />
+              </FormControl>
             </Grid>
             <Grid item xs={6} md={3}>
-              <TextField
-                label="To Date"
-                type="date"
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
+              <FormControl fullWidth>
+                <InputLabel
+                  shrink
+                  htmlFor="to-date-input"
+                  sx={{
+                    backgroundColor: '#fff',
+                    paddingX: '4px',
+                    marginLeft: '-4px',
+                  }}
+                >
+                  To Date
+                </InputLabel>
+                <Box
+                  component="input"
+                  id="to-date-input"
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  sx={{
+                    width: '100%',
+                    padding: '16.5px 14px',
+                    fontSize: '1rem',
+                    fontFamily: 'inherit',
+                    border: '1px solid rgba(0, 0, 0, 0.23)',
+                    borderRadius: '4px',
+                    backgroundColor: '#fff',
+                    color: '#000',
+                    colorScheme: 'light',
+                    '&:hover': {
+                      borderColor: 'rgba(0, 0, 0, 0.87)',
+                    },
+                    '&:focus': {
+                      outline: 'none',
+                      borderColor: '#1976d2',
+                      borderWidth: '2px',
+                    },
+                    '&::-webkit-calendar-picker-indicator': {
+                      cursor: 'pointer',
+                    },
+                  }}
+                />
+              </FormControl>
             </Grid>
             <Grid item xs={12} md={2}>
               <Button
