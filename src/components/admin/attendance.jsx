@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import styles from "./admin.module.scss";
 import { loadLS, saveLS } from "../../utils";
+import { LoadingIndicator } from "../LoadingIndicator";
 import { getPendingLeaveRequests, approveLeaveRequest, rejectLeaveRequest } from "../../services/leaveService";
 import { getAttendanceRecords } from "../../services/attendanceService";
 
@@ -173,7 +174,11 @@ export function Attendance() {
               {filtered.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} align="center" sx={{ py: 6, color: "text.secondary" }}>
-                    {loading ? "Loading attendance records..." : "No attendance records."}
+                    {loading ? (
+                      <LoadingIndicator label="Loading attendance records..." size={36} />
+                    ) : (
+                      "No attendance records."
+                    )}
                   </TableCell>
                 </TableRow>
               )}
@@ -254,7 +259,11 @@ export function Attendance() {
               {leaves.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} align="center" sx={{ py: 6, color: "text.secondary" }}>
-                    {loading ? "Loading leave applications..." : "No pending leave applications."}
+                    {loading ? (
+                      <LoadingIndicator label="Loading leave applications..." size={36} />
+                    ) : (
+                      "No pending leave applications."
+                    )}
                   </TableCell>
                 </TableRow>
               )}

@@ -16,6 +16,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import { getMySalary, getMySalaryHistory, downloadSalaryHistory } from "../../services/employeeService";
 import { loadLS } from "../../utils";
 import { LS_KEYS } from "../../enum";
+import { LoadingIndicator } from "../LoadingIndicator";
 import styles from "./employee.module.scss";
 
 export function Earning() {
@@ -123,7 +124,7 @@ export function Earning() {
       </Typography>
 
       {loading ? (
-        <Typography color="text.secondary">Loading...</Typography>
+        <LoadingIndicator label="Loading your earnings..." />
       ) : (
         <Stack spacing={2}>
           <Box display="flex" gap={12} alignItems="center">

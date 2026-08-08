@@ -10,4 +10,5 @@ export * from "./employee/leave";
 export * from "./layout/topBar";
 export * from "./login/login";
 export * from "./employee/earning";
+export * from "./LoadingIndicator";
 

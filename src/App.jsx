@@ -17,6 +17,7 @@ import {
   EmployeeAdmin,
   Orders,
   Earning,
+  LoadingIndicator,
   Tasks,
   TopBar,
   Users,
@@ -66,15 +67,27 @@ function Shell() {
   );
 }
 
-const comingSoon = () => {};
-
 function TabsWrapper({ roles }) {
   const [tab, setTab] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!loading) return undefined;
+    const timer = setTimeout(() => setLoading(false), 500);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  const handleTabChange = (_, v) => {
+    if (v === tab) return;
+    setLoading(true);
+    setTab(v);
+  };
+
   return (
     <Box>
       <Tabs
         value={tab}
-        onChange={(_, v) => setTab(v)}
+        onChange={handleTabChange}
         aria-label="main tabs"
         variant="scrollable"
         scrollButtons="auto"
@@ -91,7 +104,7 @@ function TabsWrapper({ roles }) {
         <Tab label="Users" />
         <Tab label="Settings" />
       </Tabs>
-      <Box sx={{ mt: 2 }}>
+      <Box sx={{ mt: 2, position: "relative" }}>
         {tab === 0 && <Catalog roles={roles} />}
         {tab === 1 && <Orders roles={roles} />}
         {tab === 2 && <>Coming Soon</>}
@@ -102,6 +115,9 @@ function TabsWrapper({ roles }) {
         {tab === 7 && <EmployeeAdmin roles={roles} />}
         {tab === 8 && <Users roles={roles} />}
         {tab === 9 && <Settings roles={roles} />}
+        {loading && (
+          <LoadingIndicator overlay label="Loading, please wait..." />
+        )}
       </Box>
     </Box>
   );
