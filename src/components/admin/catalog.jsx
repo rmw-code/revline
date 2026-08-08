@@ -33,6 +33,7 @@ import {
   updateService,
 } from "../../services/serviceService";
 import { getServiceTypes } from "../../services/serviceTypesService";
+import { getBrands } from "../../services/brandsService";
 import { hasAnyRole } from "../../utils";
 import { loadLS } from "../../utils/loadLS";
 import { LS_KEYS } from "../../enum/localStorageKeys";
@@ -60,9 +61,10 @@ export function Catalog({ roles }) {
   const [itemTypeList, setItemTypeList] = useState([]); // Array of type names for display
   const [serviceTypeObjects, setServiceTypeObjects] = useState([]); // Full objects with IDs
   const [localCatalogTypes] = useState(loadLS(LS_KEYS.CATALOG_TYPES, []));
-  const [brandList, setBrandList] = useState(() =>
+  const [localBrands] = useState(() =>
     (loadLS(LS_KEYS.BRANDS, []) || []).map((brand) => brand.name).filter(Boolean),
   );
+  const [brandList, setBrandList] = useState([]);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -97,11 +99,21 @@ export function Catalog({ roles }) {
   */
 
   useEffect(() => {
-    const storedBrands = (loadLS(LS_KEYS.BRANDS, []) || [])
-      .map((brand) => brand.name)
-      .filter(Boolean);
-    setBrandList(storedBrands);
-  }, []);
+    const fetchBrands = async () => {
+      try {
+        const data = await getBrands();
+        if (Array.isArray(data)) {
+          setBrandList(data.map((brand) => brand.name).filter(Boolean));
+        } else {
+          setBrandList(localBrands);
+        }
+      } catch (error) {
+        console.error("Failed to fetch brands", error);
+        setBrandList(localBrands);
+      }
+    };
+    fetchBrands();
+  }, [localBrands]);
 
   // Fetch motorcycles on component mount
   useEffect(() => {

@@ -26,6 +26,12 @@ import {
 } from "@mui/material";
 import { hasAnyRole } from "../../utils";
 import {
+  getBrands,
+  createBrand,
+  updateBrand,
+  deleteBrand,
+} from "../../services/brandsService";
+import {
   getMotorcycles,
   createMotorcycle,
   updateMotorcycle,
@@ -62,13 +68,19 @@ export function Settings({ roles }) {
   const [selectedMoto, setSelectedMoto] = useState(null);
 
   useEffect(() => {
-    setBrands(loadLS(LS_KEYS.BRANDS, []));
+    loadBrands();
     setCatalogTypes(loadLS(LS_KEYS.CATALOG_TYPES, []));
   }, []);
 
-  useEffect(() => {
-    saveLS(LS_KEYS.BRANDS, brands);
-  }, [brands]);
+  const loadBrands = async () => {
+    try {
+      const data = await getBrands();
+      setBrands(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Failed to fetch brands:", error);
+      setBrands([]);
+    }
+  };
 
   useEffect(() => {
     saveLS(LS_KEYS.CATALOG_TYPES, catalogTypes);
@@ -127,26 +139,23 @@ export function Settings({ roles }) {
         setError("Brand name is required.");
         return;
       }
-      const next = editing
-        ? brands.map((item) =>
-            item.id === editing.id
-              ? {
-                  ...item,
-                  name: form.name.trim(),
-                  description: form.description.trim(),
-                }
-              : item,
-          )
-        : [
-            ...brands,
-            {
-              id: Date.now().toString(),
-              name: form.name.trim(),
-              description: form.description.trim(),
-            },
-          ];
-      setBrands(next);
-      setOpen(false);
+      const payload = {
+        name: form.name.trim(),
+        description: form.description.trim() || undefined,
+      };
+
+      try {
+        if (editing) {
+          await updateBrand(editing.id, payload);
+        } else {
+          await createBrand(payload);
+        }
+        await loadBrands();
+        setOpen(false);
+      } catch (error) {
+        console.error("Failed to save brand:", error);
+        setError("Unable to save brand. Please try again.");
+      }
       return;
     }
 
@@ -208,7 +217,12 @@ export function Settings({ roles }) {
 
   const handleDelete = async (mode, item) => {
     if (mode === "brand") {
-      setBrands(brands.filter((entry) => entry.id !== item.id));
+      try {
+        await deleteBrand(item.id);
+        await loadBrands();
+      } catch (error) {
+        console.error("Failed to delete brand:", error);
+      }
       return;
     }
     if (mode === "type") {

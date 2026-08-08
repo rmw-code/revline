@@ -214,6 +214,7 @@ export function Orders({ roles }) {
           details: item.details || "",
           quantity: qty,
           type: item.type || "",
+          brand: item.brand || "",
           lineTotal: Number((item.price * qty).toFixed(2)),
         };
       });
