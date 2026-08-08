@@ -4,6 +4,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useEffect, useState } from "react";
 import {
+  Autocomplete,
   Box,
   Button,
   Dialog,
@@ -572,11 +573,20 @@ export function Settings({ roles }) {
             )}
             {dialogMode === "motorcycle" && (
               <>
-                <TextField
-                  label="Brand"
-                  fullWidth
+                <Autocomplete
+                  freeSolo
+                  options={brands.map((b) => b.name)}
                   value={form.brand}
-                  onChange={(e) => setForm({ ...form, brand: e.target.value })}
+                  onChange={(_, value) => setForm({ ...form, brand: value || "" })}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Brand"
+                      fullWidth
+                      placeholder="Search or type a brand"
+                      onChange={(e) => setForm({ ...form, brand: e.target.value })}
+                    />
+                  )}
                 />
                 <TextField
                   label="Model"
