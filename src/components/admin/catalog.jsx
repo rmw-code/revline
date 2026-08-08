@@ -145,8 +145,7 @@ export function Catalog({ roles }) {
         const data = await getServiceTypes();
         if (Array.isArray(data)) {
           setServiceTypeObjects(data);
-          const types = data.map((type) => type.name);
-          setItemTypeList([...new Set([...types, ...localCatalogTypes])]);
+          setItemTypeList(data.map((type) => type.name));
         } else {
           setItemTypeList(localCatalogTypes);
         }

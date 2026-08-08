@@ -38,9 +38,12 @@ import {
   updateMotorcycle,
   deleteMotorcycle,
 } from "../../services/motorcycleService";
-import { loadLS } from "../../utils/loadLS";
-import { saveLS } from "../../utils/saveLS";
-import { LS_KEYS } from "../../enum/localStorageKeys";
+import {
+  getServiceTypes,
+  createServiceType,
+  updateServiceType,
+  deleteServiceType,
+} from "../../services/serviceTypesService";
 
 const defaultForm = {
   name: "",
@@ -70,7 +73,7 @@ export function Settings({ roles }) {
 
   useEffect(() => {
     loadBrands();
-    setCatalogTypes(loadLS(LS_KEYS.CATALOG_TYPES, []));
+    loadCatalogTypes();
   }, []);
 
   const loadBrands = async () => {
@@ -83,9 +86,15 @@ export function Settings({ roles }) {
     }
   };
 
-  useEffect(() => {
-    saveLS(LS_KEYS.CATALOG_TYPES, catalogTypes);
-  }, [catalogTypes]);
+  const loadCatalogTypes = async () => {
+    try {
+      const data = await getServiceTypes();
+      setCatalogTypes(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Failed to fetch catalog types:", error);
+      setCatalogTypes([]);
+    }
+  };
 
   useEffect(() => {
     loadMotorcycles();
@@ -165,26 +174,23 @@ export function Settings({ roles }) {
         setError("Catalog type name is required.");
         return;
       }
-      const next = editing
-        ? catalogTypes.map((item) =>
-            item.id === editing.id
-              ? {
-                  ...item,
-                  name: form.name.trim(),
-                  description: form.description.trim(),
-                }
-              : item,
-          )
-        : [
-            ...catalogTypes,
-            {
-              id: Date.now().toString(),
-              name: form.name.trim(),
-              description: form.description.trim(),
-            },
-          ];
-      setCatalogTypes(next);
-      setOpen(false);
+      const payload = {
+        name: form.name.trim(),
+        description: form.description.trim() || undefined,
+      };
+
+      try {
+        if (editing) {
+          await updateServiceType(editing.id, payload);
+        } else {
+          await createServiceType(payload);
+        }
+        await loadCatalogTypes();
+        setOpen(false);
+      } catch (error) {
+        console.error("Failed to save catalog type:", error);
+        setError("Unable to save catalog type. Please try again.");
+      }
       return;
     }
 
@@ -227,7 +233,12 @@ export function Settings({ roles }) {
       return;
     }
     if (mode === "type") {
-      setCatalogTypes(catalogTypes.filter((entry) => entry.id !== item.id));
+      try {
+        await deleteServiceType(item.id);
+        await loadCatalogTypes();
+      } catch (error) {
+        console.error("Failed to delete catalog type:", error);
+      }
       return;
     }
     if (mode === "motorcycle") {
@@ -259,8 +270,8 @@ export function Settings({ roles }) {
         Dictionary Settings
       </Typography>
       <Typography color="text.secondary" paragraph>
-        Manage brands, catalog types, and motorcycles from one page. New catalog
-        types are stored locally and can be used in the catalog dropdown.
+        Manage brands, catalog types, and motorcycles from one page. Catalog
+        types are used in the catalog dropdown.
       </Typography>
 
       <Grid container spacing={2}>
