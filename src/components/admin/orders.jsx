@@ -168,9 +168,7 @@ export function Orders({ roles }) {
 
   const getOrderGrandTotal = (items) =>
     (items || []).reduce((sum, item) => {
-      const lineTotal = Number(
-        item?.lineTotal ?? getLineTotal(item),
-      );
+      const lineTotal = Number(item?.lineTotal ?? getLineTotal(item));
       return sum + lineTotal;
     }, 0);
 
@@ -196,6 +194,21 @@ export function Orders({ roles }) {
       }
     });
   };
+  const resetCreateForm = () => {
+    setCustomer("");
+    setPhoneNo("");
+    setPlatNo("");
+    setMileage("");
+    setBike("");
+    setSelectedMotorcycle(null);
+    setMechanic("");
+    setSelectedMechanic(null);
+    setSelected([]);
+    setQuantities({});
+    setSearch("");
+    setCreateErrors([]);
+  };
+
   const createOrder = async () => {
     const errors = [];
 
@@ -234,7 +247,9 @@ export function Orders({ roles }) {
       });
 
       const totalCharge = Number(
-        servicesPayload.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0).toFixed(2),
+        servicesPayload
+          .reduce((sum, item) => sum + Number(item.lineTotal || 0), 0)
+          .toFixed(2),
       );
 
       const orderData = {
@@ -266,16 +281,8 @@ export function Orders({ roles }) {
       // Save full order details to localStorage for customer display
       saveLS(LS_KEYS.DISPLAY_ORDER, fullOrderDetails);
 
-      // Reset form
-      setCustomer("");
-      setPhoneNo("");
-      setPlatNo("");
-      setMileage("");
-      setBike("");
-      setSelectedMotorcycle(null);
-      setMechanic("");
-      setSelectedMechanic(null);
-      setSelected([]);
+      // Reset form only after successful creation
+      resetCreateForm();
       return true;
     } catch (error) {
       console.error("Failed to create order:", error);
@@ -383,8 +390,7 @@ export function Orders({ roles }) {
 
       // Address under logo
       const address = [
-        "No 140",
-        "Jalan Lestari Perdana 7/4",
+        "No. 140-G, Jalan Lestari Perdana 7/4",
         "Taman Lestari Perdana",
         "43300 Seri Kembangan, Selangor",
         "Business Reg. No: 202503190421 (003752485-M)",
@@ -417,10 +423,12 @@ export function Orders({ roles }) {
       });
 
       autoTable(doc, {
-        head: [["Service & Parts", "Type", "Brand", "Quantity", "Details", "Price"]],
+        head: [
+          ["Service & Parts", "Type", "Brand", "Quantity", "Details", "Price"],
+        ],
         body: rows,
         startY: tableStartY,
-        styles: { font: "helvetica", fontSize: 10, cellPadding: 6 },
+        styles: { font: "helvetica", fontSize: 9, cellPadding: 6 },
         headStyles: { fillColor: [240, 240, 240], textColor: 20 },
       });
 
@@ -429,7 +437,11 @@ export function Orders({ roles }) {
       // Total
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text(`Total: RM${grandTotal.toFixed(2)}`, 14, doc.lastAutoTable.finalY + 12);
+      doc.text(
+        `Total: RM${grandTotal.toFixed(2)}`,
+        14,
+        doc.lastAutoTable.finalY + 12,
+      );
 
       // 🔹 Signature & Stamp section
       const footerY = pageHeight - 40;
@@ -527,7 +539,10 @@ export function Orders({ roles }) {
       {/* Create Order Dialog */}
       <Dialog
         open={createOpen}
-        onClose={() => setCreateOpen(false)}
+        onClose={() => {
+          resetCreateForm();
+          setCreateOpen(false);
+        }}
         fullWidth
         maxWidth="lg"
       >
@@ -685,9 +700,14 @@ export function Orders({ roles }) {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {services
+                    {[...services]
                       .filter((s) =>
                         s.name.toLowerCase().includes(search.toLowerCase()),
+                      )
+                      .sort(
+                        (a, b) =>
+                          Number(selected.includes(b.id)) -
+                          Number(selected.includes(a.id)),
                       )
                       .map((s) => (
                         <TableRow key={s.id} hover>
@@ -761,7 +781,15 @@ export function Orders({ roles }) {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateOpen(false)}>Cancel</Button>
+          <Button
+            onClick={() => {
+              resetCreateForm();
+              setCreateOpen(false);
+            }}
+          >
+            Cancel
+          </Button>
+          <Button onClick={() => setCreateOpen(false)}>Draft</Button>
           <Button
             variant="contained"
             onClick={async () => {
@@ -811,9 +839,9 @@ export function Orders({ roles }) {
                   shrink
                   htmlFor="from-date-input"
                   sx={{
-                    backgroundColor: '#fff',
-                    paddingX: '4px',
-                    marginLeft: '-4px',
+                    backgroundColor: "#fff",
+                    paddingX: "4px",
+                    marginLeft: "-4px",
                   }}
                 >
                   From Date
@@ -825,25 +853,25 @@ export function Orders({ roles }) {
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
                   sx={{
-                    width: '100%',
-                    padding: '16.5px 14px',
-                    fontSize: '1rem',
-                    fontFamily: 'inherit',
-                    border: '1px solid rgba(0, 0, 0, 0.23)',
-                    borderRadius: '4px',
-                    backgroundColor: '#fff',
-                    color: '#000',
-                    colorScheme: 'light',
-                    '&:hover': {
-                      borderColor: 'rgba(0, 0, 0, 0.87)',
+                    width: "100%",
+                    padding: "16.5px 14px",
+                    fontSize: "1rem",
+                    fontFamily: "inherit",
+                    border: "1px solid rgba(0, 0, 0, 0.23)",
+                    borderRadius: "4px",
+                    backgroundColor: "#fff",
+                    color: "#000",
+                    colorScheme: "light",
+                    "&:hover": {
+                      borderColor: "rgba(0, 0, 0, 0.87)",
                     },
-                    '&:focus': {
-                      outline: 'none',
-                      borderColor: '#1976d2',
-                      borderWidth: '2px',
+                    "&:focus": {
+                      outline: "none",
+                      borderColor: "#1976d2",
+                      borderWidth: "2px",
                     },
-                    '&::-webkit-calendar-picker-indicator': {
-                      cursor: 'pointer',
+                    "&::-webkit-calendar-picker-indicator": {
+                      cursor: "pointer",
                     },
                   }}
                 />
@@ -855,9 +883,9 @@ export function Orders({ roles }) {
                   shrink
                   htmlFor="to-date-input"
                   sx={{
-                    backgroundColor: '#fff',
-                    paddingX: '4px',
-                    marginLeft: '-4px',
+                    backgroundColor: "#fff",
+                    paddingX: "4px",
+                    marginLeft: "-4px",
                   }}
                 >
                   To Date
@@ -869,25 +897,25 @@ export function Orders({ roles }) {
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
                   sx={{
-                    width: '100%',
-                    padding: '16.5px 14px',
-                    fontSize: '1rem',
-                    fontFamily: 'inherit',
-                    border: '1px solid rgba(0, 0, 0, 0.23)',
-                    borderRadius: '4px',
-                    backgroundColor: '#fff',
-                    color: '#000',
-                    colorScheme: 'light',
-                    '&:hover': {
-                      borderColor: 'rgba(0, 0, 0, 0.87)',
+                    width: "100%",
+                    padding: "16.5px 14px",
+                    fontSize: "1rem",
+                    fontFamily: "inherit",
+                    border: "1px solid rgba(0, 0, 0, 0.23)",
+                    borderRadius: "4px",
+                    backgroundColor: "#fff",
+                    color: "#000",
+                    colorScheme: "light",
+                    "&:hover": {
+                      borderColor: "rgba(0, 0, 0, 0.87)",
                     },
-                    '&:focus': {
-                      outline: 'none',
-                      borderColor: '#1976d2',
-                      borderWidth: '2px',
+                    "&:focus": {
+                      outline: "none",
+                      borderColor: "#1976d2",
+                      borderWidth: "2px",
                     },
-                    '&::-webkit-calendar-picker-indicator': {
-                      cursor: 'pointer',
+                    "&::-webkit-calendar-picker-indicator": {
+                      cursor: "pointer",
                     },
                   }}
                 />
@@ -941,7 +969,10 @@ export function Orders({ roles }) {
                     <TableCell>{o.motorcycleName || o.bike}</TableCell>
                     <TableCell>{o.mechanicName || o.mechanic}</TableCell>
                     <TableCell>
-                      RM{getOrderGrandTotal(o.services || o.items || []).toFixed(2)}
+                      RM
+                      {getOrderGrandTotal(o.services || o.items || []).toFixed(
+                        2,
+                      )}
                     </TableCell>
                     <TableCell>
                       <div
