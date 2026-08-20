@@ -62,7 +62,9 @@ export function Catalog({ roles }) {
   const [serviceTypeObjects, setServiceTypeObjects] = useState([]); // Full objects with IDs
   const [localCatalogTypes] = useState(loadLS(LS_KEYS.CATALOG_TYPES, []));
   const [localBrands] = useState(() =>
-    (loadLS(LS_KEYS.BRANDS, []) || []).map((brand) => brand.name).filter(Boolean),
+    (loadLS(LS_KEYS.BRANDS, []) || [])
+      .map((brand) => brand.name)
+      .filter(Boolean),
   );
   const [brandList, setBrandList] = useState([]);
   const [q, setQ] = useState("");
@@ -387,7 +389,7 @@ export function Catalog({ roles }) {
                 <TableCell>RM{s.price.toFixed(2)}</TableCell>
                 <TableCell>{s.serviceTypeName || "-"}</TableCell>
                 <TableCell>
-                  <div>{s.brand || "-"}</div>
+                  <div style={{ fontWeight: "500" }}>{s.brand || "-"}</div>
                   <div>{s.partNumber || "-"}</div>
                 </TableCell>
                 {/* <TableCell>{s.allowMultiple ? s.quantity : "-"}</TableCell> */}
@@ -415,12 +417,17 @@ export function Catalog({ roles }) {
                 </TableCell>
                 {canManageServices(roles) && (
                   <TableCell align="right">
-                    <IconButton size="small" onClick={(event) => handleOpenActions(event, s)}>
+                    <IconButton
+                      size="small"
+                      onClick={(event) => handleOpenActions(event, s)}
+                    >
                       <MoreVertIcon fontSize="small" />
                     </IconButton>
                     <Menu
                       anchorEl={menuAnchorEl}
-                      open={Boolean(menuAnchorEl) && selectedService?.id === s.id}
+                      open={
+                        Boolean(menuAnchorEl) && selectedService?.id === s.id
+                      }
                       onClose={handleCloseActions}
                     >
                       <MenuItem
@@ -466,7 +473,9 @@ export function Catalog({ roles }) {
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle>{editing ? "Edit Service/Part" : "Add Service/Part"}</DialogTitle>
+        <DialogTitle>
+          {editing ? "Edit Service/Part" : "Add Service/Part"}
+        </DialogTitle>
         <DialogContent dividers>
           <Stack flexDirection={"column"} spacing={2}>
             <Stack>
@@ -564,7 +573,7 @@ export function Catalog({ roles }) {
 
             <Stack>
               <TextField
-              multiline
+                multiline
                 rows={3}
                 label="Details"
                 fullWidth

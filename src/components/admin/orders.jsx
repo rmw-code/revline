@@ -115,26 +115,23 @@ export function Orders({ roles }) {
   }, [orderSearch, dateFrom, dateTo]);
 
   useEffect(() => {
-    // Check localStorage for mechanics list first
-    const cachedMechanics = loadLS(LS_KEYS.MECHANICS, null);
-
-    if (cachedMechanics && cachedMechanics.length > 0) {
-      // Use cached mechanics from localStorage
-      setMechanics(cachedMechanics);
-    } else {
-      // Fetch from API and store in localStorage
-      const fetchMechanics = async () => {
-        try {
-          const response = await getUsersByRole("mechanic", 0, 100);
-          const mechanicsList = response.content || [];
-          setMechanics(mechanicsList);
-          saveLS(LS_KEYS.MECHANICS, mechanicsList);
-        } catch (error) {
-          console.error("Failed to fetch mechanics:", error);
+    const fetchMechanics = async () => {
+      try {
+        const cachedMechanics = loadLS(LS_KEYS.MECHANICS, []);
+        if (cachedMechanics && cachedMechanics.length > 0) {
+          setMechanics(cachedMechanics);
         }
-      };
-      fetchMechanics();
-    }
+
+        const response = await getUsersByRole("mechanic", 0, 100);
+        const mechanicsList = response.content || [];
+        setMechanics(mechanicsList);
+        saveLS(LS_KEYS.MECHANICS, mechanicsList);
+      } catch (error) {
+        console.error("Failed to fetch mechanics:", error);
+      }
+    };
+
+    fetchMechanics();
   }, []);
 
   useEffect(() => {
@@ -162,6 +159,20 @@ export function Orders({ roles }) {
 
   // No longer syncing orders to localStorage
   // useEffect(() => saveLS(LS_KEYS.ORDERS, orders), [orders]);
+
+  const getLineTotal = (item) => {
+    const unitPrice = Number(item?.price ?? item?.amount ?? 0);
+    const quantity = Number(item?.quantity ?? 1);
+    return Number((unitPrice * quantity).toFixed(2));
+  };
+
+  const getOrderGrandTotal = (items) =>
+    (items || []).reduce((sum, item) => {
+      const lineTotal = Number(
+        item?.lineTotal ?? getLineTotal(item),
+      );
+      return sum + lineTotal;
+    }, 0);
 
   const total = selected.reduce((sum, id) => {
     const s = services.find((x) => x.id === id);
@@ -208,16 +219,23 @@ export function Orders({ roles }) {
       const items = selected.map((id) => services.find((s) => s.id === id));
       const servicesPayload = items.map((item) => {
         const qty = item.allowMultiple ? quantities[item.id] || 1 : 1;
+        const unitPrice = Number(item.price ?? item.amount ?? 0);
+        const lineTotal = Number((unitPrice * qty).toFixed(2));
+
         return {
           name: item.name,
-          price: item.price,
-          details: item.details || "",
+          price: unitPrice,
+          details: item.details || item.description || "",
           quantity: qty,
-          type: item.type || "",
-          brand: item.brand || "",
-          lineTotal: Number((item.price * qty).toFixed(2)),
+          type: item.type || item.serviceTypeName || item.serviceType || "",
+          brand: item.brand || item.serviceBrand || item.productBrand || "",
+          lineTotal,
         };
       });
+
+      const totalCharge = Number(
+        servicesPayload.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0).toFixed(2),
+      );
 
       const orderData = {
         customerName: customer,
@@ -230,6 +248,8 @@ export function Orders({ roles }) {
         mechanicId: selectedMechanic?.id || null,
         status: "PENDING",
         isPaid: false,
+        totalCharge,
+        total: totalCharge,
         services: servicesPayload,
       };
 
@@ -262,6 +282,42 @@ export function Orders({ roles }) {
       alert("Failed to create order. Please try again.");
       return false;
     }
+  };
+
+  const normalizeServiceItem = (item = {}) => {
+    const quantity = Number(item.quantity ?? item.qty ?? 1);
+    const unitPrice = Number(item.price ?? item.amount ?? item.unitPrice ?? 0);
+    const lineTotal = Number(
+      item.lineTotal ?? (unitPrice * quantity).toFixed(2),
+    );
+
+    return {
+      ...item,
+      quantity,
+      price: unitPrice,
+      lineTotal,
+      type:
+        item.type ||
+        item.serviceTypeName ||
+        item.serviceType ||
+        item.category ||
+        item.service?.serviceTypeName ||
+        item.service?.type ||
+        "-",
+      brand:
+        item.brand ||
+        item.serviceBrand ||
+        item.productBrand ||
+        item.brandName ||
+        item.service?.brand ||
+        "-",
+      details:
+        item.details ||
+        item.description ||
+        item.service?.details ||
+        item.service?.description ||
+        "-",
+    };
   };
 
   const downloadPDF = async (order) => {
@@ -342,34 +398,38 @@ export function Orders({ roles }) {
 
       const tableStartY = Math.max(addressY + 10, 70);
 
-      const serviceItems = fullOrder.services || fullOrder.items || [];
-      const rows = serviceItems.map((i) => [
-        i.name,
-        i.type,
-        i.brand,
-        i.quantity,
-        i.details || "-",
-        `RM${i.price.toFixed(2)}`,
-      ]);
+      const serviceItems = (fullOrder.services || fullOrder.items || []).map(
+        normalizeServiceItem,
+      );
+
+      const rows = serviceItems.map((i) => {
+        const quantity = Number(i.quantity ?? 1);
+        const lineTotal = Number(i.lineTotal ?? 0);
+
+        return [
+          i.name,
+          i.type,
+          i.brand,
+          quantity,
+          i.details,
+          `RM${lineTotal.toFixed(2)}`,
+        ];
+      });
 
       autoTable(doc, {
-        head: [["Service & Parts", "Type", "Brand", "Quantity", "Price"]],
+        head: [["Service & Parts", "Type", "Brand", "Quantity", "Details", "Price"]],
         body: rows,
         startY: tableStartY,
-        styles: { font: "helvetica", fontSize: 10, cellPadding: 6 }, // 🔹 more spacing
+        styles: { font: "helvetica", fontSize: 10, cellPadding: 6 },
         headStyles: { fillColor: [240, 240, 240], textColor: 20 },
       });
+
+      const grandTotal = getOrderGrandTotal(serviceItems);
 
       // Total
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text(
-        `Total: RM${(fullOrder.totalCharge || fullOrder.total || 0).toFixed(
-          2,
-        )}`,
-        14,
-        doc.lastAutoTable.finalY + 12,
-      );
+      doc.text(`Total: RM${grandTotal.toFixed(2)}`, 14, doc.lastAutoTable.finalY + 12);
 
       // 🔹 Signature & Stamp section
       const footerY = pageHeight - 40;
@@ -881,7 +941,7 @@ export function Orders({ roles }) {
                     <TableCell>{o.motorcycleName || o.bike}</TableCell>
                     <TableCell>{o.mechanicName || o.mechanic}</TableCell>
                     <TableCell>
-                      RM{(o.totalCharge || o.total || 0).toFixed(2)}
+                      RM{getOrderGrandTotal(o.services || o.items || []).toFixed(2)}
                     </TableCell>
                     <TableCell>
                       <div
