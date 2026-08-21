@@ -361,23 +361,28 @@ export function Orders({ roles }) {
       );
       doc.text(`Bike: ${fullOrder.motorcycleName || fullOrder.bike}`, 14, 40);
       doc.text(
-        `Mechanic: ${fullOrder.mechanicName || fullOrder.mechanic}`,
+        `Mileage: ${fullOrder.mileage ?? fullOrder.km ?? "-"} km`,
         14,
         45,
+      );
+      doc.text(
+        `Mechanic: ${fullOrder.mechanicName || fullOrder.mechanic}`,
+        14,
+        50,
       );
       doc.text(
         `Date: ${new Date(
           fullOrder.createAt || fullOrder.createdAt,
         ).toLocaleString()}`,
         14,
-        50,
+        55,
       );
 
       // Payment status
       const paymentStatus =
         fullOrder.isPaid || fullOrder.paid ? "Paid" : "Unpaid";
       doc.setFont("helvetica", "bold");
-      doc.text(`Status: ${paymentStatus}`, 14, 55);
+      doc.text(`Status: ${paymentStatus}`, 14, 60);
       doc.setFont("helvetica", "normal");
 
       // Logo (top right)
