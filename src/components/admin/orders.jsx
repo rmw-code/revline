@@ -194,6 +194,54 @@ export function Orders({ roles }) {
       }
     });
   };
+
+  const clearDraft = () => {
+    saveLS(LS_KEYS.ORDER_DRAFT, null);
+  };
+
+  const saveDraft = () => {
+    saveLS(LS_KEYS.ORDER_DRAFT, {
+      customer,
+      phoneNo,
+      platNo,
+      mileage,
+      bike,
+      selectedMotorcycle,
+      mechanic,
+      selectedMechanic,
+      selected,
+      quantities,
+      search,
+      createErrors,
+    });
+  };
+
+  const restoreDraft = () => {
+    const draft = loadLS(LS_KEYS.ORDER_DRAFT, null);
+    if (!draft) return;
+
+    setCustomer(draft.customer ?? "");
+    setPhoneNo(draft.phoneNo ?? "");
+    setPlatNo(draft.platNo ?? "");
+    setMileage(draft.mileage ?? "");
+    setBike(draft.bike ?? "");
+    setSelectedMotorcycle(draft.selectedMotorcycle ?? null);
+    setMechanic(draft.mechanic ?? "");
+    setSelectedMechanic(draft.selectedMechanic ?? null);
+    setSelected(draft.selected ?? []);
+    setQuantities(draft.quantities ?? {});
+    setSearch(draft.search ?? "");
+    setCreateErrors(draft.createErrors ?? []);
+  };
+
+  useEffect(() => {
+    restoreDraft();
+  }, []);
+
+  useEffect(() => {
+    if (createOpen) saveDraft();
+  }, [createOpen, customer, phoneNo, platNo, mileage, bike, selectedMotorcycle, mechanic, selectedMechanic, selected, quantities, search, createErrors]);
+
   const resetCreateForm = () => {
     setCustomer("");
     setPhoneNo("");
@@ -207,6 +255,7 @@ export function Orders({ roles }) {
     setQuantities({});
     setSearch("");
     setCreateErrors([]);
+    clearDraft();
   };
 
   const createOrder = async () => {
@@ -361,28 +410,33 @@ export function Orders({ roles }) {
       );
       doc.text(`Bike: ${fullOrder.motorcycleName || fullOrder.bike}`, 14, 40);
       doc.text(
-        `Mileage: ${fullOrder.mileage ?? fullOrder.km ?? "-"} km`,
+        `Plate Number: ${fullOrder.plateNumber || "-"}`,
         14,
         45,
       );
       doc.text(
-        `Mechanic: ${fullOrder.mechanicName || fullOrder.mechanic}`,
+        `Mileage: ${fullOrder.mileage ?? fullOrder.km ?? "-"} km`,
         14,
         50,
+      );
+      doc.text(
+        `Mechanic: ${fullOrder.mechanicName || fullOrder.mechanic}`,
+        14,
+        55,
       );
       doc.text(
         `Date: ${new Date(
           fullOrder.createAt || fullOrder.createdAt,
         ).toLocaleString()}`,
         14,
-        55,
+        60,
       );
 
       // Payment status
       const paymentStatus =
         fullOrder.isPaid || fullOrder.paid ? "Paid" : "Unpaid";
       doc.setFont("helvetica", "bold");
-      doc.text(`Status: ${paymentStatus}`, 14, 60);
+      doc.text(`Status: ${paymentStatus}`, 14, 65);
       doc.setFont("helvetica", "normal");
 
       // Logo (top right)
@@ -794,7 +848,14 @@ export function Orders({ roles }) {
           >
             Cancel
           </Button>
-          <Button onClick={() => setCreateOpen(false)}>Draft</Button>
+          <Button
+            onClick={() => {
+              saveDraft();
+              setCreateOpen(false);
+            }}
+          >
+            Draft
+          </Button>
           <Button
             variant="contained"
             onClick={async () => {
@@ -823,7 +884,10 @@ export function Orders({ roles }) {
             </Typography>
             <Button
               variant="contained"
-              onClick={() => setCreateOpen(true)}
+              onClick={() => {
+                restoreDraft();
+                setCreateOpen(true);
+              }}
               startIcon={<AddIcon />}
             >
               New Order

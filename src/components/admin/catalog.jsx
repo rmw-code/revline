@@ -184,7 +184,11 @@ export function Catalog({ roles }) {
     fetchServices();
   }, [q]);
 
-  const filtered = services; // Backend handles filtering
+  const filtered = [...services].sort((a, b) =>
+    (a.name || "").localeCompare(b.name || "", undefined, {
+      sensitivity: "base",
+    }),
+  );
 
   const resetForm = () => {
     setForm({

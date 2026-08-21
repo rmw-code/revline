@@ -11,4 +11,5 @@ export const LS_KEYS = {
   MECHANICS: "bs_mechanics",
   BRANDS: "bs_brands",
   CATALOG_TYPES: "bs_catalog_types",
+  ORDER_DRAFT: "bs_order_draft",
 };
