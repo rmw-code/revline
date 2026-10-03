@@ -12,6 +12,7 @@ import {
   Attendance,
   Catalog,
   CustomerDisplay,
+  Dashboard,
   Leave,
   Login,
   EmployeeAdmin,
@@ -93,6 +94,7 @@ function TabsWrapper({ roles }) {
         scrollButtons="auto"
         allowScrollButtonsMobile
       >
+        <Tab label="Dashboard" />
         <Tab label="Catalog" />
         <Tab label="Orders" />
         <Tab label="Inventory" disabled />
@@ -105,16 +107,17 @@ function TabsWrapper({ roles }) {
         <Tab label="Settings" />
       </Tabs>
       <Box sx={{ mt: 2, position: "relative" }}>
-        {tab === 0 && <Catalog roles={roles} />}
-        {tab === 1 && <Orders roles={roles} />}
-        {tab === 2 && <>Coming Soon</>}
-        {tab === 3 && <Tasks roles={roles} />}
-        {tab === 4 && <Leave />}
-        {tab === 5 && <Earning />}
-        {tab === 6 && <Attendance />}
-        {tab === 7 && <EmployeeAdmin roles={roles} />}
-        {tab === 8 && <Users roles={roles} />}
-        {tab === 9 && <Settings roles={roles} />}
+        {tab === 0 && <Dashboard />}
+        {tab === 1 && <Catalog roles={roles} />}
+        {tab === 2 && <Orders roles={roles} />}
+        {tab === 3 && <>Coming Soon</>}
+        {tab === 4 && <Tasks roles={roles} />}
+        {tab === 5 && <Leave />}
+        {tab === 6 && <Earning />}
+        {tab === 7 && <Attendance />}
+        {tab === 8 && <EmployeeAdmin roles={roles} />}
+        {tab === 9 && <Users roles={roles} />}
+        {tab === 10 && <Settings roles={roles} />}
         {loading && (
           <LoadingIndicator overlay label="Loading, please wait..." />
         )}

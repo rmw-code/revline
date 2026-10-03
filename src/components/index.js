@@ -1,5 +1,6 @@
 export * from "./admin/attendance";
 export * from "./admin/catalog";
+export * from "./admin/dashboard";
 export * from "./admin/orders";
 export * from "./admin/tasks";
 export * from "./admin/users";
@@ -11,4 +12,3 @@ export * from "./layout/topBar";
 export * from "./login/login";
 export * from "./employee/earning";
 export * from "./LoadingIndicator";
-
